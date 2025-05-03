@@ -1,0 +1,307 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import ReactFlow, {
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  Node as FlowNode,
+  Connection,
+  NodeChange,
+  EdgeChange,
+  BackgroundVariant,
+  NodeTypes,
+  EdgeTypes,
+  OnConnectStart,
+  OnConnectEnd
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+
+import { useProjectStore } from '../../stores/useProjectStore';
+import { Block } from '../../types';
+import EditorLayout from '../layouts/editor-layout';
+import TreesPanel from '../panels/trees-panel';
+import NodesPanel from '../panels/nodes-panel';
+import PropertiesPanel from '../panels/properties-panel';
+
+// Custom node components
+import CompositeNode from './nodes/composite-node';
+import DecoratorNode from './nodes/decorator-node';
+import ActionNode from './nodes/action-node';
+import ConditionNode from './nodes/condition-node';
+import RootNode from './nodes/root-node';
+
+// Custom edge component
+import ContextEdge from './edges/context-edge';
+
+// Node types registry for ReactFlow
+const nodeTypes: NodeTypes = {
+  composite: CompositeNode,
+  decorator: DecoratorNode,
+  action: ActionNode,
+  condition: ConditionNode,
+  root: RootNode,
+};
+
+// Edge types registry for ReactFlow
+const edgeTypes: EdgeTypes = {
+  default: ContextEdge,
+};
+
+const BehaviorTreeEditor: React.FC = () => {
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const connectingNodeId = useRef<string | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null);
+  
+  // Get project data and methods from store
+  const project = useProjectStore(state => state.project);
+  const selectedTreeId = useProjectStore(state => state.project?.selectedTreeId);
+  const createBlock = useProjectStore(state => state.createBlock);
+  const updateBlock = useProjectStore(state => state.updateBlock);
+  const deleteBlock = useProjectStore(state => state.deleteBlock);
+  const createConnection = useProjectStore(state => state.createConnection);
+  const deleteConnection = useProjectStore(state => state.deleteConnection);
+  
+  // Convert project tree data to ReactFlow nodes and edges
+  const syncTreeToFlow = useCallback(() => {
+    if (!project || !selectedTreeId || !project.trees[selectedTreeId]) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+    
+    const tree = project.trees[selectedTreeId];
+    
+    // Convert blocks to nodes
+    const flowNodes = Object.values(tree.blocks).map((block: Block) => ({
+      id: block.id,
+      type: block.category,
+      position: block.position,
+      data: {
+        ...block,
+        label: block.title || block.name,
+      },
+    }));
+    
+    // Convert connections to edges
+    const flowEdges = Object.values(tree.connections).map((connection) => ({
+      id: connection.id,
+      source: connection.source,
+      target: connection.target,
+      animated: true,
+      type: 'default',
+    }));
+    
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+  }, [project, selectedTreeId, setNodes, setEdges]);
+  
+  // When selected tree changes, update the flow
+  useEffect(() => {
+    syncTreeToFlow();
+  }, [syncTreeToFlow]);
+  
+  // Handle node selection
+  const onNodeClick = useCallback((_: React.MouseEvent, node: FlowNode) => {
+    setSelectedNode(node);
+  }, []);
+  
+  // Handle connection creation
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (project && selectedTreeId && connection.source && connection.target) {
+        createConnection(selectedTreeId, connection.source, connection.target);
+      }
+    },
+    [project, selectedTreeId, createConnection]
+  );
+  
+  // Handle node changes
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      // Handle position changes - only after drag has ended to prevent infinite updates
+      const positionChanges = changes.filter(change => 
+        change.type === 'position' && change.position && change.id && change.dragging === false
+      );
+      
+      if (project && selectedTreeId && positionChanges.length > 0) {
+        positionChanges.forEach(change => {
+          if (change.type === 'position' && change.position) {
+            updateBlock(selectedTreeId, change.id, {
+              position: change.position
+            });
+          }
+        });
+      }
+      
+      // Handle node removals
+      const removeChanges = changes.filter(change => change.type === 'remove');
+      if (project && selectedTreeId && removeChanges.length > 0) {
+        removeChanges.forEach(change => {
+          deleteBlock(selectedTreeId, change.id);
+        });
+      }
+      
+      onNodesChange(changes);
+    },
+    [project, selectedTreeId, updateBlock, deleteBlock, onNodesChange]
+  );
+  
+  // Handle edge changes (deletions)
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      // Handle edge removals
+      const removeChanges = changes.filter(change => change.type === 'remove');
+      if (project && selectedTreeId && removeChanges.length > 0) {
+        removeChanges.forEach(change => {
+          deleteConnection(selectedTreeId, change.id);
+        });
+      }
+      
+      onEdgesChange(changes);
+    },
+    [project, selectedTreeId, deleteConnection, onEdgesChange]
+  );
+  
+  // Handle node updates from properties panel
+  const handleUpdateNode = useCallback(
+    (updates: Partial<Block>) => {
+      if (project && selectedTreeId && selectedNode) {
+        updateBlock(selectedTreeId, selectedNode.id, updates);
+        
+        // Update local node state for immediate feedback
+        setNodes(nodes => nodes.map(node => 
+          node.id === selectedNode.id
+            ? { ...node, data: { ...node.data, ...updates, label: updates.title || node.data.label } }
+            : node
+        ));
+      }
+    },
+    [project, selectedTreeId, selectedNode, updateBlock, setNodes]
+  );
+  
+  // Handle drag and drop from nodes panel
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+  
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      console.log('Drop event triggered');
+      
+      if (!reactFlowWrapper.current || !reactFlowInstance || !project || !selectedTreeId) {
+        console.log('Drop prerequisites not met:', {
+          hasWrapper: !!reactFlowWrapper.current,
+          hasInstance: !!reactFlowInstance,
+          hasProject: !!project,
+          hasTreeId: !!selectedTreeId
+        });
+        return;
+      }
+      
+      const nodeName = event.dataTransfer.getData('application/reactflow');
+      console.log('Node name from data transfer:', nodeName);
+      if (!nodeName) return;
+      
+      // Get node category from project.nodes
+      // Find the node by name (case-insensitive match)
+      const nodeKey = Object.keys(project.nodes).find(
+        key => project.nodes[key].name.toLowerCase() === nodeName.toLowerCase()
+      );
+      
+      if (!nodeKey) {
+        console.log('Could not find node key. Available nodes:', Object.keys(project.nodes));
+        return;
+      }
+      
+      const nodeData = project.nodes[nodeKey];
+      console.log('Node data from project:', nodeData);
+      if (!nodeData) return;
+      
+      // Get drop position
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const position = reactFlowInstance.project({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
+      console.log('Calculated position:', position);
+      
+      // Create new block
+      const blockId = createBlock(selectedTreeId, nodeKey, position);
+      console.log('Created block with ID:', blockId);
+    },
+    [reactFlowInstance, project, selectedTreeId, createBlock]
+  );
+  
+  // Handle connection start for validation
+  const onConnectStart: OnConnectStart = useCallback((_, { nodeId }) => {
+    if (nodeId) {
+      connectingNodeId.current = nodeId;
+    }
+  }, []);
+  
+  const onConnectEnd: OnConnectEnd = useCallback(
+    (event) => {
+      // Handle both mouse and touch events
+      const targetElement = event instanceof MouseEvent ? 
+        (event.target as Element) : 
+        (event.touches?.[0].target as Element);
+      
+      const targetNodeId = targetElement.closest('.react-flow__node')?.getAttribute('data-id');
+      
+      if (connectingNodeId.current && targetNodeId && project && selectedTreeId) {
+        // Create the connection using the store
+        createConnection(selectedTreeId, connectingNodeId.current, targetNodeId);
+      }
+      
+      connectingNodeId.current = null;
+    },
+    [project, selectedTreeId, createConnection]
+  );
+  
+  // Get the selected block for the properties panel
+  const selectedBlock = selectedNode && project && selectedTreeId
+    ? project.trees[selectedTreeId].blocks[selectedNode.id]
+    : undefined;
+    
+  return (
+    <EditorLayout
+      canvas={
+        <div className="h-full w-full" ref={reactFlowWrapper}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
+            onConnect={onConnect}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+            onNodeClick={onNodeClick}
+            onInit={setReactFlowInstance}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            maxZoom={2}
+            minZoom={0.1}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            fitView
+            deleteKeyCode={['Backspace', 'Delete']}
+          >
+            <Controls />
+            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          </ReactFlow>
+        </div>
+      }
+      treesPanel={<TreesPanel />}
+      nodesPanel={<NodesPanel />}
+      propertiesPanel={<PropertiesPanel selectedBlock={selectedBlock} onUpdateBlock={handleUpdateNode} />}
+    />
+  );
+};
+
+export default BehaviorTreeEditor;
