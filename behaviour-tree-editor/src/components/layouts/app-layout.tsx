@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react';
+import { NavLink } from 'react-router-dom';
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -29,24 +30,40 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <nav>
             <ul className="flex space-x-6">
               <li>
-                <a href="/" className="text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400">
+                <NavLink to="/" className={({ isActive }) => 
+                  isActive 
+                    ? "text-emerald-500 dark:text-emerald-400" 
+                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
+                }>
                   Home
-                </a>
+                </NavLink>
               </li>
               <li>
-                <a href="/editor" className="text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400">
+                <NavLink to="/editor" className={({ isActive }) => 
+                  isActive 
+                    ? "text-emerald-500 dark:text-emerald-400" 
+                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
+                }>
                   Editor
-                </a>
+                </NavLink>
               </li>
               <li>
-                <a href="/projects" className="text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400">
+                <NavLink to="/projects" className={({ isActive }) => 
+                  isActive 
+                    ? "text-emerald-500 dark:text-emerald-400" 
+                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
+                }>
                   Projects
-                </a>
+                </NavLink>
               </li>
               <li>
-                <a href="/settings" className="text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400">
+                <NavLink to="/settings" className={({ isActive }) => 
+                  isActive 
+                    ? "text-emerald-500 dark:text-emerald-400" 
+                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
+                }>
                   Settings
-                </a>
+                </NavLink>
               </li>
             </ul>
           </nav>

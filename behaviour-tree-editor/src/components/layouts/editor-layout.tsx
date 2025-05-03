@@ -1,5 +1,7 @@
 import React, { ReactNode, useState } from 'react';
 import { useProjectStore } from '../../stores/useProjectStore';
+import { serializeProject } from '../../lib/behavior/serializer';
+import { toast } from 'sonner';
 
 type PanelId = 'trees' | 'nodes' | 'properties';
 
@@ -18,6 +20,8 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
 }) => {
   const [collapsedPanels, setCollapsedPanels] = useState<PanelId[]>([]);
   const project = useProjectStore(state => state.project);
+  const saveProjectStore = useProjectStore(state => state.saveProject);
+  const loadProject = useProjectStore(state => state.loadProject);
   
   const togglePanel = (panelId: PanelId) => {
     setCollapsedPanels(prev => 
@@ -28,6 +32,73 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
   };
 
   const isPanelCollapsed = (panelId: PanelId) => collapsedPanels.includes(panelId);
+  
+  // Save project to localStorage
+  const saveProject = () => {
+    if (project) {
+      const result = saveProjectStore();
+      if (result) {
+        // Store in localStorage
+        try {
+          const serialized = serializeProject(project);
+          localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serialized));
+          toast.success('Project saved successfully');
+        } catch (error) {
+          console.error('Error saving project:', error);
+          toast.error('Failed to save project');
+        }
+      }
+    }
+  };
+  
+  // Handle export button click
+  const handleExport = () => {
+    if (!project) return;
+    
+    try {
+      const serialized = serializeProject(project);
+      const dataStr = JSON.stringify(serialized, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      
+      const exportName = `${project.name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}.json`;
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportName);
+      linkElement.click();
+      
+      toast.success('Project exported successfully');
+    } catch (error) {
+      console.error('Error exporting project:', error);
+      toast.error('Failed to export project');
+    }
+  };
+  
+  // Handle import button click - trigger file input
+  const handleImport = () => {
+    document.getElementById('bt-file-import')?.click();
+  };
+  
+  // Handle file selection
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        loadProject(json);
+        toast.success('Project imported successfully');
+      } catch (error) {
+        console.error('Failed to parse project file', error);
+        toast.error('Invalid project file');
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset the file input
+    e.target.value = '';
+  };
   
   if (!project) {
     return (
@@ -65,15 +136,31 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
           </span>
         </div>
         <div className="flex space-x-4">
-          <button className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">
+          <button 
+            onClick={saveProject} 
+            className="px-3 py-1 text-sm bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
+          >
             Save
           </button>
-          <button className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">
+          <button 
+            onClick={handleImport}
+            className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+          >
             Import
           </button>
-          <button className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">
+          <button 
+            onClick={handleExport}
+            className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+          >
             Export
           </button>
+          <input 
+            type="file" 
+            id="bt-file-import" 
+            style={{ display: 'none' }} 
+            onChange={handleFileImport} 
+            accept=".json"
+          />
         </div>
       </div>
       
