@@ -13,7 +13,8 @@ import ReactFlow, {
   EdgeTypes,
   OnConnectStart,
   OnConnectEnd,
-  ReactFlowInstance
+  ReactFlowInstance,
+  NodePositionChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -93,7 +94,7 @@ const BehaviorTreeEditor: React.FC = () => {
 
   // Cache to store previous positions of nodes
   const prevNodePositionsRef = useRef<{[key: string]: {x: number, y: number}}>({});
-  
+
   // Convert project tree data to ReactFlow nodes and edges
   const syncTreeToFlow = useCallback(() => {
     if (!project || !selectedTreeId || !project.trees[selectedTreeId]) {
@@ -105,7 +106,7 @@ const BehaviorTreeEditor: React.FC = () => {
     }
 
     const tree = project.trees[selectedTreeId];
-    
+
     // Get previous positions for comparison (create if doesn't exist)
     const prevPositions = prevNodePositionsRef.current;
 
@@ -114,7 +115,7 @@ const BehaviorTreeEditor: React.FC = () => {
       // Check if we should use a cached position
       const nodeId = block.id;
       const cachedPosition = prevPositions[nodeId];
-      
+
       // If we have a cached position, and it's not the node being dragged, use it
       let position = block.position;
       if (cachedPosition) {
@@ -123,7 +124,7 @@ const BehaviorTreeEditor: React.FC = () => {
         // Store this position for future reference if it's not cached yet
         prevPositions[nodeId] = {...block.position};
       }
-      
+
       return {
         id: nodeId,
         type: block.category,
@@ -150,14 +151,14 @@ const BehaviorTreeEditor: React.FC = () => {
       if (currentNodes.length === 0) {
         return flowNodes;
       }
-      
+
       // If node count changes, we need to update
       if (currentNodes.length !== flowNodes.length) {
         // Create a mapping of existing nodes by ID to preserve positions
         const currentNodeMap = new Map(
           currentNodes.map(node => [node.id, node])
         );
-        
+
         // Return new nodes but preserve positions of existing ones
         return flowNodes.map(newNode => {
           const existingNode = currentNodeMap.get(newNode.id);
@@ -171,33 +172,32 @@ const BehaviorTreeEditor: React.FC = () => {
           return newNode;
         });
       }
-      
+
       // Compare nodes to see if any data (except position) has changed
       // This avoids unnecessary rerenders when only UI state changes
       const nodeChanges = flowNodes.filter(newNode => {
         const existingNode = currentNodes.find(node => node.id === newNode.id);
         if (!existingNode) return true;
-        
+
         // Compare data except position
-        const newDataNoPos = { ...newNode.data };
-        delete newDataNoPos.position;
-        
-        const existingDataNoPos = { ...existingNode.data };
-        delete existingDataNoPos.position;
-        
+        // Revert to destructuring, marking position as unused with underscores
+        const { position: _newNodePos, ...newDataNoPos } = newNode.data;
+
+        const { position: _existingNodePos, ...existingDataNoPos } = existingNode.data;
+
         return JSON.stringify(newDataNoPos) !== JSON.stringify(existingDataNoPos);
       });
-      
+
       // If no data changes, keep current state to avoid re-renders
       if (nodeChanges.length === 0) {
         return currentNodes;
       }
-      
+
       // Update nodes while preserving positions
       return currentNodes.map(node => {
         const newNode = flowNodes.find(n => n.id === node.id);
         if (!newNode) return node;
-        
+
         // Preserve position but update data
         return {
           ...newNode,
@@ -215,23 +215,23 @@ const BehaviorTreeEditor: React.FC = () => {
       if (currentEdges.length !== flowEdges.length) {
         return flowEdges;
       }
-      
+
       // Check if any edge data has changed
       const edgeChanges = flowEdges.filter(newEdge => {
         const existingEdge = currentEdges.find(edge => edge.id === newEdge.id);
         if (!existingEdge) return true;
-        
+
         return (
           existingEdge.source !== newEdge.source ||
           existingEdge.target !== newEdge.target
         );
       });
-      
+
       // If no changes, keep current edges to avoid re-renders
       if (edgeChanges.length === 0) {
         return currentEdges;
       }
-      
+
       return flowEdges;
     });
   }, [project, selectedTreeId, setNodes, setEdges]);
@@ -316,42 +316,47 @@ const BehaviorTreeEditor: React.FC = () => {
           // Use requestAnimationFrame to batch position updates
           requestAnimationFrame(() => {
             positionChanges.forEach(change => {
-              if (change.type === 'position' && change.position) {
+              // Ensure change is of type 'position' before accessing position/id
+              if (change.type === 'position' && change.position && change.id) {
                 // Round positions for consistency and reduce jitter
                 const x = Math.round(change.position.x / 15) * 15;
                 const y = Math.round(change.position.y / 15) * 15;
-                
+
                 // Update our position cache
                 prevPositions[change.id] = { x, y };
-                
+
                 // Update the store with final position
                 updateBlock(selectedTreeId, change.id, {
                   position: { x, y }
                 });
               }
             });
-            
+
             // Update nodes after all position changes are processed
-            setNodes(nodes => 
+            setNodes(nodes =>
               nodes.map(node => {
                 // If this node had a position change, make sure it's at the snapped position
-                const posChange = positionChanges.find(change => change.id === node.id);
+                // Add type guard before accessing change.id and change.position
+                const posChange = positionChanges.find(
+                  (change): change is NodePositionChange =>
+                    change.type === 'position' && change.id === node.id
+                );
                 if (posChange && posChange.position) {
                   const x = Math.round(posChange.position.x / 15) * 15;
                   const y = Math.round(posChange.position.y / 15) * 15;
                   return {
                     ...node,
                     position: { x, y },
-                    data: { 
-                      ...node.data, 
-                      position: { x, y } 
+                    data: {
+                      ...node.data,
+                      position: { x, y }
                     }
                   };
                 }
                 return node;
               })
             );
-            
+
             // Auto-save after node position changes
             if (autoSave && project && positionChanges.length > 0) {
               try {
@@ -371,13 +376,16 @@ const BehaviorTreeEditor: React.FC = () => {
 
         if (removeChanges.length > 0) {
           removeChanges.forEach(change => {
-            // Remove from position cache
-            if (prevPositions[change.id]) {
-              delete prevPositions[change.id];
+            // Ensure change is of type 'remove' before accessing id
+            if (change.type === 'remove' && change.id) {
+              // Remove from position cache
+              if (prevPositions[change.id]) {
+                delete prevPositions[change.id];
+              }
+
+              // Remove from store
+              deleteBlock(selectedTreeId, change.id);
             }
-            
-            // Remove from store
-            deleteBlock(selectedTreeId, change.id);
           });
 
           // Auto-save after node removal
@@ -513,7 +521,7 @@ const BehaviorTreeEditor: React.FC = () => {
       // Create new block in the store
       const blockId = createBlock(selectedTreeId, nodeKey, roundedPosition);
       console.log('Created block with ID:', blockId);
-      
+
       // Add the position to our cached positions
       prevNodePositionsRef.current[blockId] = {...roundedPosition};
 
@@ -637,7 +645,6 @@ const BehaviorTreeEditor: React.FC = () => {
             nodesDraggable={true}
             elementsSelectable={true}
             selectNodesOnDrag={false}
-            snapToAlignment={false}
             zoomOnDoubleClick={false}
             panOnScroll={true}
             panOnDrag={true}
