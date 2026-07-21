@@ -22,8 +22,8 @@
 
   <script defer data-domain="behaviortrees.com" src="https://plausible.io/js/script.js"></script>
 
-  <link rel="stylesheet" href="css/preload.min.css">
-  <script type="text/javascript" src="js/preload.min.js"></script>
+  <link rel="stylesheet" href="css/preload.min.css?v=[BUILD_VERSION]-[BUILD_DATE]">
+  <script type="text/javascript" src="js/preload.min.js?v=[BUILD_VERSION]-[BUILD_DATE]"></script>
 </head>
 
 <body ng-controller="AppController as app">
@@ -56,19 +56,19 @@
 
 
 <script>preloadProgress('Loading vendor styles...');</script>
-<link rel="stylesheet" href="css/vendor.min.css">
+<link rel="stylesheet" href="css/vendor.min.css?v=[BUILD_VERSION]-[BUILD_DATE]">
 
 <script>preloadProgress('Loading app styles...');</script>
-<link rel="stylesheet" href="css/app.min.css">
+<link rel="stylesheet" href="css/app.min.css?v=[BUILD_VERSION]-[BUILD_DATE]">
 
 <script>preloadProgress('Loading vendor libraries...');</script>
-<script type="text/javascript" src="js/vendor.min.js"></script>
+<script type="text/javascript" src="js/vendor.min.js?v=[BUILD_VERSION]-[BUILD_DATE]"></script>
 
 <script>preloadProgress('Loading app libraries...');</script>
-<script type="text/javascript" src="js/app.min.js"></script>
+<script type="text/javascript" src="js/app.min.js?v=[BUILD_VERSION]-[BUILD_DATE]"></script>
 
 <script>preloadProgress('Loading templates...');</script>
-<script type="text/javascript" src="js/templates.min.js"></script>
+<script type="text/javascript" src="js/templates.min.js?v=[BUILD_VERSION]-[BUILD_DATE]"></script>
 
 <script>preloadProgress('Starting application... Have Fun!');</script>
 <script>startApp();</script>

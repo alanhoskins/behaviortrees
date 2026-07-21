@@ -79,6 +79,9 @@ angular.module('app', [
         if (projects.length > 0 && projects[0].isOpen) {
           projectModel
             .openProject(projects[0].path)
+            .then(null, function() {
+              // A corrupt recent project must not block startup
+            })
             .then(function() {
               closePreload();
               loadExample();
