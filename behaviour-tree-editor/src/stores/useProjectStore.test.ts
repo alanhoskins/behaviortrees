@@ -99,3 +99,130 @@ describe('createConnection arity rules', () => {
     expect(store().undoStack.length).toBe(before);
   });
 });
+
+describe('copy/cut/paste/duplicate', () => {
+  function makeSubtree() {
+    const seq = addBlock('Sequence');
+    const wait = addBlock('Wait');
+    store().createConnection(treeId(), seq, wait);
+    return { seq, wait };
+  }
+
+  it('copy + paste clones blocks and their internal connections with new ids', () => {
+    const { seq, wait } = makeSubtree();
+    store().copyBlocks(treeId(), [seq, wait]);
+    const pasted = store().pasteClipboard(treeId());
+
+    expect(pasted).toHaveLength(2);
+    expect(pasted).not.toContain(seq);
+    const tree = store().project!.trees[treeId()];
+    expect(Object.keys(tree.blocks)).toHaveLength(5); // root + 2 original + 2 pasted
+
+    const pastedConn = Object.values(tree.connections).filter(
+      (c) => pasted.includes(c.source) && pasted.includes(c.target),
+    );
+    expect(pastedConn).toHaveLength(1);
+  });
+
+  it('paste offsets positions', () => {
+    const { seq } = makeSubtree();
+    store().copyBlocks(treeId(), [seq]);
+    const [pasted] = store().pasteClipboard(treeId());
+    const tree = store().project!.trees[treeId()];
+    expect(tree.blocks[pasted].position.x).toBe(tree.blocks[seq].position.x + 40);
+  });
+
+  it('root blocks are never copied', () => {
+    store().copyBlocks(treeId(), [rootId()]);
+    expect(store().clipboard).toBeNull();
+    expect(store().pasteClipboard(treeId())).toHaveLength(0);
+  });
+
+  it('cut removes originals and their connections but keeps them pasteable', () => {
+    const { seq, wait } = makeSubtree();
+    store().cutBlocks(treeId(), [seq, wait]);
+
+    let tree = store().project!.trees[treeId()];
+    expect(Object.keys(tree.blocks)).toHaveLength(1); // root only
+    expect(Object.keys(tree.connections)).toHaveLength(0);
+
+    const pasted = store().pasteClipboard(treeId());
+    tree = store().project!.trees[treeId()];
+    expect(pasted).toHaveLength(2);
+    expect(Object.keys(tree.blocks)).toHaveLength(3);
+  });
+
+  it('duplicate clones in place without touching the clipboard', () => {
+    const { seq } = makeSubtree();
+    store().copyBlocks(treeId(), [seq]);
+    const clipBefore = store().clipboard;
+
+    const created = store().duplicateBlocks(treeId(), [seq]);
+    expect(created).toHaveLength(1);
+    expect(store().clipboard).toBe(clipBefore);
+  });
+
+  it('cut then undo restores the original blocks', () => {
+    const { seq, wait } = makeSubtree();
+    store().cutBlocks(treeId(), [seq, wait]);
+    store().undo();
+    const tree = store().project!.trees[treeId()];
+    expect(Object.keys(tree.blocks)).toHaveLength(3);
+  });
+});
+
+describe('organize', () => {
+  it('lays out blocks and centers parents on children', () => {
+    const seq = addBlock('Sequence');
+    const a = addBlock('Wait');
+    const b = addBlock('Failer');
+    store().createConnection(treeId(), rootId(), seq);
+    store().createConnection(treeId(), seq, a);
+    store().createConnection(treeId(), seq, b);
+
+    store().organize(treeId(), 'horizontal');
+    const tree = store().project!.trees[treeId()];
+
+    // root keeps its position; depth increases along x
+    expect(tree.blocks[rootId()].position).toEqual({ x: 0, y: 0 });
+    expect(tree.blocks[seq].position.x).toBeGreaterThan(0);
+    expect(tree.blocks[a].position.x).toBeGreaterThan(tree.blocks[seq].position.x);
+    // leaves spread on y; parent centered between them
+    expect(tree.blocks[a].position.y).not.toBe(tree.blocks[b].position.y);
+    expect(tree.blocks[seq].position.y).toBe(
+      (tree.blocks[a].position.y + tree.blocks[b].position.y) / 2,
+    );
+  });
+
+  it('vertical layout puts depth on the y axis', () => {
+    const seq = addBlock('Sequence');
+    const a = addBlock('Wait');
+    store().createConnection(treeId(), rootId(), seq);
+    store().createConnection(treeId(), seq, a);
+
+    store().organize(treeId(), 'vertical');
+    const tree = store().project!.trees[treeId()];
+    expect(tree.blocks[seq].position.y).toBeGreaterThan(tree.blocks[rootId()].position.y);
+    expect(tree.blocks[a].position.y).toBeGreaterThan(tree.blocks[seq].position.y);
+  });
+});
+
+describe('updateNode rename', () => {
+  it('re-keys the template and updates blocks in all trees', () => {
+    store().createNode({ name: 'OldName', category: 'action', properties: {} });
+    const block = addBlock('OldName');
+
+    store().updateNode('OldName', { name: 'NewName', title: 'Renamed' });
+
+    expect(store().project!.nodes.OldName).toBeUndefined();
+    expect(store().project!.nodes.NewName.title).toBe('Renamed');
+    expect(store().project!.trees[treeId()].blocks[block].name).toBe('NewName');
+  });
+
+  it('refuses renames that collide with an existing node', () => {
+    store().createNode({ name: 'A', category: 'action', properties: {} });
+    store().updateNode('A', { name: 'Wait' });
+    expect(store().project!.nodes.A).toBeDefined();
+    expect(store().project!.nodes.Wait.isDefault).toBe(true);
+  });
+});

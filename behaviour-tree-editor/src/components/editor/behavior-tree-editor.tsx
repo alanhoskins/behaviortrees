@@ -66,6 +66,13 @@ const BehaviorTreeEditor: React.FC = () => {
   const deleteBlock = useProjectStore(state => state.deleteBlock);
   const createConnection = useProjectStore(state => state.createConnection);
   const deleteConnection = useProjectStore(state => state.deleteConnection);
+  const undo = useProjectStore(state => state.undo);
+  const redo = useProjectStore(state => state.redo);
+  const copyBlocks = useProjectStore(state => state.copyBlocks);
+  const cutBlocks = useProjectStore(state => state.cutBlocks);
+  const pasteClipboard = useProjectStore(state => state.pasteClipboard);
+  const duplicateBlocks = useProjectStore(state => state.duplicateBlocks);
+  const organize = useProjectStore(state => state.organize);
 
   // Get editor settings from localStorage
   const [showGrid, setShowGrid] = useState<boolean>(true);
@@ -261,6 +268,94 @@ const BehaviorTreeEditor: React.FC = () => {
   const onNodeClick = useCallback((_: React.MouseEvent, node: FlowNode) => {
     setSelectedNode(node);
   }, []);
+
+  // Store positions changed under the canvas (undo/redo/organize): the
+  // position cache would override them, so drop it and rebuild from store
+  const refreshFromStore = useCallback(() => {
+    prevNodePositionsRef.current = {};
+    setNodes([]);
+  }, [setNodes]);
+
+  // Toolbar buttons live outside this component; they announce store-side
+  // position changes through this event
+  useEffect(() => {
+    const handler = () => refreshFromStore();
+    window.addEventListener('bt-canvas-refresh', handler);
+    return () => window.removeEventListener('bt-canvas-refresh', handler);
+  }, [refreshFromStore]);
+
+  // Keyboard shortcuts matching the old editor's menubar bindings
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!project || !selectedTreeId) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+      const key = e.key.toLowerCase();
+      const selectedIds = nodes.filter(n => n.selected).map(n => n.id);
+
+      if (mod && key === 'z') {
+        e.preventDefault();
+        refreshFromStore();
+        if (e.shiftKey) redo();
+        else undo();
+      } else if (mod && key === 'y') {
+        e.preventDefault();
+        refreshFromStore();
+        redo();
+      } else if (mod && key === 'c') {
+        e.preventDefault();
+        copyBlocks(selectedTreeId, selectedIds);
+      } else if (mod && key === 'x') {
+        e.preventDefault();
+        cutBlocks(selectedTreeId, selectedIds);
+      } else if (mod && key === 'v') {
+        e.preventDefault();
+        pasteClipboard(selectedTreeId);
+      } else if (mod && key === 'd') {
+        e.preventDefault();
+        duplicateBlocks(selectedTreeId, selectedIds);
+      } else if (mod && key === 'a' && e.shiftKey) {
+        e.preventDefault();
+        setNodes(ns => ns.map(n => ({ ...n, selected: false })));
+      } else if (mod && key === 'a') {
+        e.preventDefault();
+        setNodes(ns => ns.map(n => ({ ...n, selected: true })));
+      } else if (mod && key === 'i') {
+        e.preventDefault();
+        setNodes(ns => ns.map(n => ({ ...n, selected: !n.selected })));
+      } else if (!mod && key === 'a') {
+        const layout = localStorage.getItem('bt-layout') === 'vertical' ? 'vertical' : 'horizontal';
+        refreshFromStore();
+        organize(selectedTreeId, layout);
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [
+    project,
+    selectedTreeId,
+    nodes,
+    undo,
+    redo,
+    copyBlocks,
+    cutBlocks,
+    pasteClipboard,
+    duplicateBlocks,
+    organize,
+    setNodes,
+    refreshFromStore,
+  ]);
 
   // Handle connection creation
   const onConnect = useCallback(

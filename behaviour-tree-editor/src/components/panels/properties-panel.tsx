@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { Block } from '../../types';
 
@@ -14,6 +15,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const project = useProjectStore(state => state.project);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
+  const [newKey, setNewKey] = useState('');
   
   if (!project) {
     return (
@@ -45,7 +47,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     setEditingDescription(false);
   };
 
-  const handlePropertyChange = (key: string, value: any) => {
+  const handlePropertyChange = (key: string, value: unknown) => {
     if (onUpdateBlock) {
       onUpdateBlock({
         properties: {
@@ -54,6 +56,29 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         }
       });
     }
+  };
+
+  const handleAddProperty = () => {
+    const key = newKey.trim();
+    if (!key || !onUpdateBlock) return;
+    if (key in selectedBlock.properties) {
+      setNewKey('');
+      return;
+    }
+    onUpdateBlock({
+      properties: {
+        ...selectedBlock.properties,
+        [key]: ''
+      }
+    });
+    setNewKey('');
+  };
+
+  const handleRemoveProperty = (key: string) => {
+    if (!onUpdateBlock) return;
+    const properties = { ...selectedBlock.properties };
+    delete properties[key];
+    onUpdateBlock({ properties });
   };
 
   // Find the node definition to understand property types
@@ -171,20 +196,28 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         </div>
 
         {/* Properties */}
-        {Object.entries(selectedBlock.properties).length > 0 && (
-          <div>
-            <div className="mb-2">
-              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Properties
-              </h3>
-            </div>
-            <div className="space-y-3">
+        <div>
+          <div className="mb-2">
+            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Properties
+            </h3>
+          </div>
+          <div className="space-y-3">
               {Object.entries(selectedBlock.properties).map(([key, value]) => (
                 <div key={key} className="flex flex-col">
-                  <label className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {key}
-                  </label>
-                  
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      {key}
+                    </label>
+                    <button
+                      onClick={() => handleRemoveProperty(key)}
+                      className="text-slate-400 hover:text-red-500"
+                      title={`Remove ${key}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+
                   {typeof value === 'boolean' ? (
                     <label className="inline-flex items-center">
                       <input
@@ -218,9 +251,30 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   )}
                 </div>
               ))}
-            </div>
+
+              {/* Add property */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddProperty();
+                  }}
+                  placeholder="New property key"
+                  className="flex-1 px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                />
+                <button
+                  onClick={handleAddProperty}
+                  disabled={!newKey.trim()}
+                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-40"
+                  title="Add property"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

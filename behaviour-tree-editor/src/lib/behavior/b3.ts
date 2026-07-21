@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Block, Connection, Node, NodeCategory, Project, Tree } from '../../types';
 import { DEFAULT_NODES } from './defaults';
+import { organizeTree } from './organize';
 import { deserializeProject } from './serializer';
 
 // The behavior3 interchange format, as produced/consumed by the original
@@ -203,45 +204,6 @@ function collectNodeTemplates(data: B3Tree, known: Record<string, Node>): Record
   return nodes;
 }
 
-// Mirrors the old editor's OrganizeManager horizontal layout: leaves stack
-// vertically at their depth, internal nodes center on their children.
-const H_SPACING = 208;
-const V_SPACING = 88;
-
-function layoutTree(tree: Tree): void {
-  if (!tree.rootId) return;
-  let leafCount = 0;
-  const visited = new Set<string>();
-
-  const step = (blockId: string, depth: number): number => {
-    if (visited.has(blockId)) return 0;
-    visited.add(blockId);
-
-    const block = tree.blocks[blockId];
-    const children = childIdsOf(tree, blockId);
-    let y: number;
-
-    if (children.length === 0) {
-      leafCount += 1;
-      y = leafCount * V_SPACING;
-    } else {
-      let ySum = 0;
-      children.forEach((childId) => {
-        ySum += step(childId, depth + 1);
-      });
-      y = ySum / children.length;
-    }
-
-    block.position = { x: depth * H_SPACING, y };
-    return y;
-  };
-
-  step(tree.rootId, 0);
-}
-
-// childIdsOf orders by y position; during import the connections must follow
-// the children arrays instead, so insertion order is made authoritative by
-// giving blocks provisional y positions in child order before layout.
 export function b3ToTree(data: B3Tree, knownNodes: Record<string, Node>): { tree: Tree; nodes: Record<string, Node> } {
   const treeId = data.id ?? uuidv4();
   const rootId = uuidv4();
@@ -274,9 +236,7 @@ export function b3ToTree(data: B3Tree, knownNodes: Record<string, Node>): { tree
   const nodes = collectNodeTemplates(data, knownNodes);
   const templateOf = (name: string): Node | undefined => knownNodes[name] ?? nodes[name];
 
-  let order = 0;
   Object.values(data.nodes ?? {}).forEach((spec) => {
-    order += 1;
     const template = templateOf(spec.name);
     const block: Block = {
       id: spec.id,
@@ -285,38 +245,30 @@ export function b3ToTree(data: B3Tree, knownNodes: Record<string, Node>): { tree
       description: spec.description ?? '',
       category: template?.category ?? inferCategory(spec),
       properties: { ...(template?.properties ?? {}), ...(spec.properties ?? {}) },
-      position: spec.display ? { x: spec.display.x, y: spec.display.y } : { x: 0, y: order * V_SPACING },
+      position: spec.display ? { x: spec.display.x, y: spec.display.y } : { x: 0, y: 0 },
     };
     tree.blocks[block.id] = block;
   });
 
+  // Connections are inserted in the file's children order, which organize
+  // honors below via byIndex
   const connect = (source: string, target: string) => {
     if (!tree.blocks[source] || !tree.blocks[target]) return;
     const connection: Connection = { id: uuidv4(), source, target };
     tree.connections[connection.id] = connection;
   };
 
-  let childOrder = 0;
-  Object.values(data.nodes ?? {}).forEach((spec) => {
-    const children = spec.children ?? (spec.child ? [spec.child] : []);
-    children.forEach((childId) => {
-      childOrder += 1;
-      const child = tree.blocks[childId];
-      // Preserve file child order for trees that will be auto-laid-out
-      if (child && !data.display && child.position.x === 0) {
-        child.position = { x: 0, y: childOrder * V_SPACING };
-      }
-      connect(spec.id, childId);
-    });
-  });
-
   if (data.root && tree.blocks[data.root]) {
     connect(rootId, data.root);
   }
+  Object.values(data.nodes ?? {}).forEach((spec) => {
+    const children = spec.children ?? (spec.child ? [spec.child] : []);
+    children.forEach((childId) => connect(spec.id, childId));
+  });
 
   // The old editor auto-organizes when the file has no display info
   if (!data.display) {
-    layoutTree(tree);
+    organizeTree(tree, 'horizontal', true);
   }
 
   return { tree, nodes };

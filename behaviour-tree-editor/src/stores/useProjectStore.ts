@@ -3,6 +3,12 @@ import { immer } from 'zustand/middleware/immer';
 import { v4 as uuidv4 } from 'uuid';
 import { Block, Connection, Node, Project, Tree } from '../types';
 import { DEFAULT_NODES } from '../lib/behavior/defaults';
+import { organizeTree, TreeLayout } from '../lib/behavior/organize';
+
+type Clipboard = {
+  blocks: Block[];
+  connections: Connection[];
+};
 
 interface ProjectState {
   // Current project data
@@ -10,7 +16,9 @@ interface ProjectState {
   // History for undo/redo
   undoStack: Project[];
   redoStack: Project[];
-  
+  // Copy/cut buffer (blocks plus the connections between them)
+  clipboard: Clipboard | null;
+
   // Actions
   createProject: (name: string, description?: string) => void;
   createTree: (title: string, description?: string) => string;
@@ -30,6 +38,13 @@ interface ProjectState {
   // Connection operations
   createConnection: (treeId: string, sourceId: string, targetId: string) => string | null;
   deleteConnection: (treeId: string, connectionId: string) => void;
+
+  // Edit operations
+  copyBlocks: (treeId: string, blockIds: string[]) => void;
+  cutBlocks: (treeId: string, blockIds: string[]) => void;
+  pasteClipboard: (treeId: string) => string[];
+  duplicateBlocks: (treeId: string, blockIds: string[]) => string[];
+  organize: (treeId: string, layout?: TreeLayout) => void;
   
   // Project operations
   saveProject: () => void;
@@ -44,6 +59,47 @@ interface ProjectState {
 
 // Helper to create a timestamp
 const timestamp = () => new Date().toISOString();
+
+const PASTE_OFFSET = 40;
+
+// Deep-copy the given blocks (root excluded) and the connections linking them
+const snapshotBlocks = (tree: Tree, blockIds: string[]): Clipboard => {
+  const ids = new Set(
+    blockIds.filter(id => tree.blocks[id] && tree.blocks[id].category !== 'root')
+  );
+  return {
+    blocks: [...ids].map(id => JSON.parse(JSON.stringify(tree.blocks[id]))),
+    connections: Object.values(tree.connections)
+      .filter(c => ids.has(c.source) && ids.has(c.target))
+      .map(c => ({ ...c })),
+  };
+};
+
+// Insert clipboard contents into a tree with fresh ids, slightly offset
+const cloneIntoTree = (tree: Tree, clip: Clipboard): string[] => {
+  const idMap: Record<string, string> = {};
+  clip.blocks.forEach(block => {
+    const id = uuidv4();
+    idMap[block.id] = id;
+    tree.blocks[id] = {
+      ...JSON.parse(JSON.stringify(block)),
+      id,
+      position: {
+        x: block.position.x + PASTE_OFFSET,
+        y: block.position.y + PASTE_OFFSET,
+      },
+    };
+  });
+  clip.connections.forEach(connection => {
+    const source = idMap[connection.source];
+    const target = idMap[connection.target];
+    if (source && target) {
+      const id = uuidv4();
+      tree.connections[id] = { id, source, target };
+    }
+  });
+  return Object.values(idMap);
+};
 
 // Initialize with default project
 const createDefaultProject = (name: string, description?: string): Project => {
@@ -88,13 +144,15 @@ export const useProjectStore = create<ProjectState>()(
     project: null,
     undoStack: [],
     redoStack: [],
-    
+    clipboard: null,
+
     createProject: (name, description) => {
       const project = createDefaultProject(name, description);
       set(state => {
         state.project = project;
         state.undoStack = [];
         state.redoStack = [];
+        state.clipboard = null;
       });
     },
     
@@ -188,16 +246,36 @@ export const useProjectStore = create<ProjectState>()(
     updateNode: (name, updates) => {
       set(state => {
         if (state.project && state.project.nodes[name]) {
+          const newName = updates.name;
+          // A rename must not collide with an existing node
+          if (newName && newName !== name && state.project.nodes[newName]) {
+            return;
+          }
+
           // Save current state to undo stack
           state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
           state.redoStack = [];
-          
-          // Update node
-          state.project.nodes[name] = {
+
+          const updated = {
             ...state.project.nodes[name],
             ...updates
           };
-          
+
+          if (newName && newName !== name) {
+            // Re-key the template and update every block using it
+            delete state.project.nodes[name];
+            state.project.nodes[newName] = updated;
+            Object.values(state.project.trees).forEach(tree => {
+              Object.values(tree.blocks).forEach(block => {
+                if (block.name === name) {
+                  block.name = newName;
+                }
+              });
+            });
+          } else {
+            state.project.nodes[name] = updated;
+          }
+
           state.project.updatedAt = timestamp();
         }
       });
@@ -383,12 +461,92 @@ export const useProjectStore = create<ProjectState>()(
           // Save current state to undo stack
           state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
           state.redoStack = [];
-          
+
           // Delete connection
           delete state.project.trees[treeId].connections[connectionId];
-          
+
           state.project.updatedAt = timestamp();
         }
+      });
+    },
+
+    copyBlocks: (treeId, blockIds) => {
+      set(state => {
+        const tree = state.project?.trees[treeId];
+        if (!tree) return;
+        const clip = snapshotBlocks(tree, blockIds);
+        if (clip.blocks.length > 0) {
+          state.clipboard = clip;
+        }
+      });
+    },
+
+    cutBlocks: (treeId, blockIds) => {
+      set(state => {
+        const tree = state.project?.trees[treeId];
+        if (!state.project || !tree) return;
+        const clip = snapshotBlocks(tree, blockIds);
+        if (clip.blocks.length === 0) return;
+
+        state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+        state.redoStack = [];
+        state.clipboard = clip;
+
+        const removed = new Set(clip.blocks.map(b => b.id));
+        Object.values(tree.connections)
+          .filter(c => removed.has(c.source) || removed.has(c.target))
+          .forEach(c => {
+            delete tree.connections[c.id];
+          });
+        removed.forEach(id => {
+          delete tree.blocks[id];
+        });
+        state.project.updatedAt = timestamp();
+      });
+    },
+
+    pasteClipboard: (treeId) => {
+      let pasted: string[] = [];
+      set(state => {
+        const tree = state.project?.trees[treeId];
+        if (!state.project || !tree || !state.clipboard || state.clipboard.blocks.length === 0) return;
+
+        state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+        state.redoStack = [];
+
+        pasted = cloneIntoTree(tree, state.clipboard);
+        state.project.updatedAt = timestamp();
+      });
+      return pasted;
+    },
+
+    duplicateBlocks: (treeId, blockIds) => {
+      let created: string[] = [];
+      set(state => {
+        const tree = state.project?.trees[treeId];
+        if (!state.project || !tree) return;
+        const clip = snapshotBlocks(tree, blockIds);
+        if (clip.blocks.length === 0) return;
+
+        state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+        state.redoStack = [];
+
+        created = cloneIntoTree(tree, clip);
+        state.project.updatedAt = timestamp();
+      });
+      return created;
+    },
+
+    organize: (treeId, layout = 'horizontal') => {
+      set(state => {
+        const tree = state.project?.trees[treeId];
+        if (!state.project || !tree) return;
+
+        state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+        state.redoStack = [];
+
+        organizeTree(tree, layout);
+        state.project.updatedAt = timestamp();
       });
     },
     
@@ -414,6 +572,7 @@ export const useProjectStore = create<ProjectState>()(
         state.project = projectData;
         state.undoStack = [];
         state.redoStack = [];
+        state.clipboard = null;
         return state; // Explicitly return state to satisfy TypeScript
       });
     },

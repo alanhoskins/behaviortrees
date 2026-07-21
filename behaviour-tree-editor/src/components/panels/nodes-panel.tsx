@@ -3,8 +3,10 @@ import { useProjectStore } from '../../stores/useProjectStore';
 import { Node, NodeCategory } from '../../types';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { Button } from '../ui/button';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
+import NodeEditModal from '../modals/node-edit-modal';
 
 // Node category definitions
 const NODE_CATEGORIES: Record<NodeCategory, { title: string; color: string }> = {
@@ -32,8 +34,10 @@ const NODE_CATEGORIES: Record<NodeCategory, { title: string; color: string }> = 
 
 const NodesPanel: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<NodeCategory>('composite');
+	const [modalOpen, setModalOpen] = useState(false);
+	const [editingNode, setEditingNode] = useState<Node | null>(null);
 	const project = useProjectStore((state) => state.project);
-	const createNode = useProjectStore((state) => state.createNode);
+	const deleteNode = useProjectStore((state) => state.deleteNode);
 
 	if (!project) {
 		return (
@@ -56,15 +60,21 @@ const NodesPanel: React.FC = () => {
 	}
 
 	const handleCreateNode = () => {
-		const name = prompt('Enter node name:');
-		if (!name) return;
+		setEditingNode(null);
+		setModalOpen(true);
+	};
 
-		createNode({
-			name,
-			category: activeTab,
-			description: '',
-			properties: {},
-		});
+	const handleEditNode = (node: Node) => {
+		setEditingNode(node);
+		setModalOpen(true);
+	};
+
+	const handleDeleteNode = (node: Node) => {
+		if (!confirm(`Delete node "${node.name}"? Blocks using it stay in trees but lose their template.`)) {
+			return;
+		}
+		deleteNode(node.name);
+		toast.success(`Node "${node.name}" deleted`);
 	};
 
 	const onDragStart = (event: React.DragEvent, nodeType: string) => {
@@ -121,13 +131,37 @@ const NodesPanel: React.FC = () => {
 										onDragStart(event, nodeKey || node.name);
 									}}
 									className={cn(
-										'p-3 rounded-md shadow-sm cursor-grab active:cursor-grabbing',
+										'group relative p-3 rounded-md shadow-sm cursor-grab active:cursor-grabbing',
 										NODE_CATEGORIES[node.category].color,
 									)}
 								>
 									<div className="font-medium">{node.title || node.name}</div>
 									{node.description && (
 										<div className="mt-1 text-xs opacity-80">{node.description}</div>
+									)}
+									{!node.isDefault && (
+										<div className="absolute top-2 right-2 hidden group-hover:flex gap-1">
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													handleEditNode(node);
+												}}
+												className="p-1 rounded bg-black/20 hover:bg-black/40"
+												title="Edit node"
+											>
+												<Pencil size={12} />
+											</button>
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													handleDeleteNode(node);
+												}}
+												className="p-1 rounded bg-black/20 hover:bg-black/40"
+												title="Delete node"
+											>
+												<Trash2 size={12} />
+											</button>
+										</div>
 									)}
 								</div>
 							))
@@ -147,6 +181,13 @@ const NodesPanel: React.FC = () => {
 					New {activeTab}
 				</Button>
 			</div>
+
+			<NodeEditModal
+				open={modalOpen}
+				onOpenChange={setModalOpen}
+				node={editingNode}
+				defaultCategory={activeTab === 'root' ? 'action' : activeTab}
+			/>
 		</div>
 	);
 };

@@ -1,4 +1,5 @@
-import React, { ReactNode, useState, useEffect } from 'react';
+import React, { ReactNode, useState, useEffect, useCallback } from 'react';
+import { Undo2, Redo2, Network } from 'lucide-react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { b3ToTree, parseImportedJson, projectToB3 } from '../../lib/behavior/b3';
 import { toast } from 'sonner';
@@ -27,6 +28,30 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
   const loadProject = useProjectStore(state => state.loadProject);
   const addImportedTree = useProjectStore(state => state.addImportedTree);
   const addNodes = useProjectStore(state => state.addNodes);
+  const undo = useProjectStore(state => state.undo);
+  const redo = useProjectStore(state => state.redo);
+  const organize = useProjectStore(state => state.organize);
+  const canUndo = useProjectStore(state => state.undoStack.length > 0);
+  const canRedo = useProjectStore(state => state.redoStack.length > 0);
+
+  // The canvas caches node positions; tell it to rebuild after store-side
+  // position changes (undo/redo/organize)
+  const refreshCanvas = () => window.dispatchEvent(new Event('bt-canvas-refresh'));
+
+  const handleUndo = () => {
+    refreshCanvas();
+    undo();
+  };
+  const handleRedo = () => {
+    refreshCanvas();
+    redo();
+  };
+  const handleOrganize = (layout: 'horizontal' | 'vertical') => {
+    if (!project?.selectedTreeId) return;
+    localStorage.setItem('bt-layout', layout);
+    refreshCanvas();
+    organize(project.selectedTreeId, layout);
+  };
 
   const togglePanel = (panelId: PanelId) => {
     setCollapsedPanels(prev =>
@@ -56,7 +81,7 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
   }, []);
 
   // Save project to localStorage
-  const saveProject = () => {
+  const saveProject = useCallback(() => {
     if (project) {
       saveProjectStore();
 
@@ -70,7 +95,19 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
         toast.error('Failed to save project');
       }
     }
-  };
+  }, [project, saveProjectStore]);
+
+  // Ctrl/Cmd+S saves, matching the old editor
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveProject();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [saveProject]);
 
   // Handle export button click - show export modal
   const handleExport = (type: ExportType = 'project') => {
@@ -167,6 +204,35 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
           </span>
         </div>
         <div className="flex space-x-4">
+          <div className="flex space-x-1">
+            <button
+              onClick={handleUndo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="px-2 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Undo2 size={16} />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="px-2 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Redo2 size={16} />
+            </button>
+            <button
+              onClick={() => handleOrganize(localStorage.getItem('bt-layout') === 'vertical' ? 'vertical' : 'horizontal')}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                handleOrganize(localStorage.getItem('bt-layout') === 'vertical' ? 'horizontal' : 'vertical');
+              }}
+              title="Auto organize (A) — right-click to switch horizontal/vertical"
+              className="px-2 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+            >
+              <Network size={16} />
+            </button>
+          </div>
           <button
             onClick={saveProject}
             className="px-3 py-1 text-sm bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
