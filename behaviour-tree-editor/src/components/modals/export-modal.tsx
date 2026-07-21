@@ -16,7 +16,7 @@ import {
 } from '../ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { serializeProject, serializeTree } from '../../lib/behavior/serializer';
+import { customNodesToB3, projectToB3, treeToB3 } from '../../lib/behavior/b3';
 import { toast } from 'sonner';
 import { CheckIcon, DownloadIcon, ClipboardIcon, ChevronDownIcon } from 'lucide-react';
 
@@ -54,26 +54,16 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
 		try {
 			if (type === 'project') {
-				data = serializeProject(project);
+				data = projectToB3(project);
 			} else if (type === 'tree') {
 				if (!selectedTreeId || !project.trees[selectedTreeId]) {
 					setExportData('No tree selected');
 					return;
 				}
-				data = serializeTree(project.trees[selectedTreeId]);
+				// Standalone tree files carry the project's custom nodes
+				data = treeToB3(project.trees[selectedTreeId], project, true);
 			} else if (type === 'nodes') {
-				// Filter custom nodes (non-default)
-				data = Object.entries(project.nodes)
-					.filter(([, node]) => !node.isDefault)
-					.map(([, node]) => ({
-						version: '1.0.0',
-						scope: 'node',
-						name: node.name,
-						category: node.category,
-						title: node.title,
-						description: node.description,
-						properties: node.properties,
-					}));
+				data = customNodesToB3(project);
 			}
 
 			setExportData(format === 'json' ? JSON.stringify(data, null, 2) : JSON.stringify(data));

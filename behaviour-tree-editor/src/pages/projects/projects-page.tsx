@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { serializeProject } from '../../lib/behavior/serializer';
+import { b3ToProject, parseImportedJson, projectToB3 } from '../../lib/behavior/b3';
 import { Button } from '../../components/ui/button';
 import { Plus, Download, Trash, Edit } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,9 +25,10 @@ const ProjectsPage: React.FC = () => {
       const key = localStorage.key(i);
       if (key && key.startsWith('bt-project-')) {
         try {
-          const projectData = JSON.parse(localStorage.getItem(key) || '');
-          if (projectData && projectData.scope === 'project') {
-            loadedProjects.push(projectData);
+          const raw = JSON.parse(localStorage.getItem(key) || '');
+          const imported = parseImportedJson(raw);
+          if (imported.kind === 'project') {
+            loadedProjects.push(imported.project);
           }
         } catch (e) {
           console.error('Error parsing project from localStorage:', e);
@@ -53,7 +54,7 @@ const ProjectsPage: React.FC = () => {
     if (newProject) {
       // Save to localStorage
       try {
-        const serialized = serializeProject(newProject);
+        const serialized = projectToB3(newProject);
         localStorage.setItem(`bt-project-${newProject.id}`, JSON.stringify(serialized));
         toast.success('Project created successfully');
       } catch (error) {
@@ -68,7 +69,7 @@ const ProjectsPage: React.FC = () => {
   };
 
   const handleExportProject = (project: any) => {
-    const serialized = serializeProject(project);
+    const serialized = projectToB3(project);
     const dataStr = JSON.stringify(serialized, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
@@ -87,11 +88,21 @@ const ProjectsPage: React.FC = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        loadProject(json);
+        const imported = parseImportedJson(json);
+
+        if (imported.kind === 'project') {
+          loadProject(imported.project);
+        } else if (imported.kind === 'tree') {
+          // A standalone tree file becomes a new single-tree project
+          loadProject(b3ToProject({ trees: [imported.tree], custom_nodes: imported.tree.custom_nodes }));
+        } else {
+          toast.error('Node files can be imported from within the editor');
+          return;
+        }
         navigate('/editor');
       } catch (error) {
         console.error('Failed to parse project file', error);
-        alert('Invalid project file');
+        toast.error('Invalid behavior tree file');
       }
     };
     reader.readAsText(file);

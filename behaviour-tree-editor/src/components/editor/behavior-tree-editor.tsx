@@ -20,7 +20,7 @@ import 'reactflow/dist/style.css';
 
 import { useProjectStore } from '../../stores/useProjectStore';
 import { Block } from '../../types';
-import { serializeProject } from '../../lib/behavior/serializer';
+import { projectToB3 } from '../../lib/behavior/b3';
 import EditorLayout from '../layouts/editor-layout';
 import TreesPanel from '../panels/trees-panel';
 import NodesPanel from '../panels/nodes-panel';
@@ -241,6 +241,22 @@ const BehaviorTreeEditor: React.FC = () => {
     syncTreeToFlow();
   }, [syncTreeToFlow]);
 
+  // Switching trees (including after an import) invalidates the position
+  // cache and needs the viewport refit to the new tree's blocks
+  const lastTreeIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (selectedTreeId === lastTreeIdRef.current) return;
+    lastTreeIdRef.current = selectedTreeId;
+    prevNodePositionsRef.current = {};
+    if (reactFlowInstance) {
+      // Wait for the synced nodes to render before fitting
+      const id = window.setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.15, maxZoom: 1 });
+      }, 50);
+      return () => window.clearTimeout(id);
+    }
+  }, [selectedTreeId, reactFlowInstance]);
+
   // Handle node selection
   const onNodeClick = useCallback((_: React.MouseEvent, node: FlowNode) => {
     setSelectedNode(node);
@@ -270,7 +286,7 @@ const BehaviorTreeEditor: React.FC = () => {
           if (autoSave && project) {
             try {
               requestAnimationFrame(() => {
-                const serializedProject = serializeProject(project);
+                const serializedProject = projectToB3(project);
                 localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
               });
             } catch (error) {
@@ -360,7 +376,7 @@ const BehaviorTreeEditor: React.FC = () => {
             // Auto-save after node position changes
             if (autoSave && project && positionChanges.length > 0) {
               try {
-                const serializedProject = serializeProject(project);
+                const serializedProject = projectToB3(project);
                 localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
               } catch (error) {
                 console.error('Auto-save failed:', error);
@@ -391,7 +407,7 @@ const BehaviorTreeEditor: React.FC = () => {
           // Auto-save after node removal
           if (autoSave && project) {
             try {
-              const serializedProject = serializeProject(project);
+              const serializedProject = projectToB3(project);
               localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
             } catch (error) {
               console.error('Auto-save failed:', error);
@@ -424,7 +440,7 @@ const BehaviorTreeEditor: React.FC = () => {
           // Auto-save after connection removal
           if (autoSave && project) {
             try {
-              const serializedProject = serializeProject(project);
+              const serializedProject = projectToB3(project);
               localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
             } catch (error) {
               console.error('Auto-save failed:', error);
@@ -452,7 +468,7 @@ const BehaviorTreeEditor: React.FC = () => {
         // Auto-save after node update
         if (autoSave && project) {
           try {
-            const serializedProject = serializeProject(project);
+            const serializedProject = projectToB3(project);
             localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
           } catch (error) {
             console.error('Auto-save failed:', error);
@@ -550,7 +566,7 @@ const BehaviorTreeEditor: React.FC = () => {
       if (autoSave && project) {
         try {
           requestAnimationFrame(() => {
-            const serializedProject = serializeProject(project);
+            const serializedProject = projectToB3(project);
             localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
           });
         } catch (error) {
@@ -598,7 +614,7 @@ const BehaviorTreeEditor: React.FC = () => {
           if (autoSave && project) {
             try {
               requestAnimationFrame(() => {
-                const serializedProject = serializeProject(project);
+                const serializedProject = projectToB3(project);
                 localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
               });
             } catch (error) {

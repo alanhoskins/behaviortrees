@@ -34,6 +34,8 @@ interface ProjectState {
   // Project operations
   saveProject: () => void;
   loadProject: (projectData: Project) => void;
+  addImportedTree: (tree: Tree, nodes: Record<string, Node>) => void;
+  addNodes: (nodes: Record<string, Node>) => void;
   
   // History operations
   undo: () => void;
@@ -52,7 +54,7 @@ const createDefaultProject = (name: string, description?: string): Project => {
   const rootId = uuidv4();
   const rootBlock: Block = {
     id: rootId,
-    name: 'root',
+    name: 'Root',
     category: 'root',
     properties: {},
     position: { x: 0, y: 0 }
@@ -103,7 +105,7 @@ export const useProjectStore = create<ProjectState>()(
       const rootId = uuidv4();
       const rootBlock: Block = {
         id: rootId,
-        name: 'root',
+        name: 'Root',
         category: 'root',
         properties: {},
         position: { x: 0, y: 0 }
@@ -403,6 +405,43 @@ export const useProjectStore = create<ProjectState>()(
         state.undoStack = [];
         state.redoStack = [];
         return state; // Explicitly return state to satisfy TypeScript
+      });
+    },
+
+    addImportedTree: (tree, nodes) => {
+      set(state => {
+        if (state.project) {
+          state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+          state.redoStack = [];
+
+          Object.values(nodes).forEach(node => {
+            if (!state.project!.nodes[node.name]) {
+              state.project!.nodes[node.name] = node;
+            }
+          });
+
+          // Re-importing a tree with the same id replaces it
+          state.project.trees[tree.id] = tree;
+          state.project.selectedTreeId = tree.id;
+          state.project.updatedAt = timestamp();
+        }
+      });
+    },
+
+    addNodes: (nodes) => {
+      set(state => {
+        if (state.project) {
+          state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+          state.redoStack = [];
+
+          Object.values(nodes).forEach(node => {
+            if (!state.project!.nodes[node.name]) {
+              state.project!.nodes[node.name] = node;
+            }
+          });
+
+          state.project.updatedAt = timestamp();
+        }
       });
     },
     

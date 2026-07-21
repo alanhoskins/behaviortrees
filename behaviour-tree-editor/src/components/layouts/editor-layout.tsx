@@ -1,6 +1,6 @@
 import React, { ReactNode, useState, useEffect } from 'react';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { serializeProject } from '../../lib/behavior/serializer';
+import { b3ToTree, parseImportedJson, projectToB3 } from '../../lib/behavior/b3';
 import { toast } from 'sonner';
 import ExportModal, { ExportType } from '../modals/export-modal';
 
@@ -25,6 +25,8 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
   const project = useProjectStore(state => state.project);
   const saveProjectStore = useProjectStore(state => state.saveProject);
   const loadProject = useProjectStore(state => state.loadProject);
+  const addImportedTree = useProjectStore(state => state.addImportedTree);
+  const addNodes = useProjectStore(state => state.addNodes);
 
   const togglePanel = (panelId: PanelId) => {
     setCollapsedPanels(prev =>
@@ -60,7 +62,7 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
 
       // Always attempt to save to localStorage after updating store state
       try {
-        const serialized = serializeProject(project);
+        const serialized = projectToB3(project);
         localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serialized));
         toast.success('Project saved successfully');
       } catch (error) {
@@ -90,11 +92,30 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        loadProject(json);
-        toast.success('Project imported successfully');
+        const imported = parseImportedJson(json);
+
+        if (imported.kind === 'project') {
+          loadProject(imported.project);
+          toast.success('Project imported');
+        } else if (imported.kind === 'tree') {
+          if (!project) {
+            toast.error('Open a project before importing a tree');
+            return;
+          }
+          const { tree, nodes } = b3ToTree(imported.tree, project.nodes);
+          addImportedTree(tree, nodes);
+          toast.success(`Tree "${tree.title}" imported`);
+        } else {
+          if (!project) {
+            toast.error('Open a project before importing nodes');
+            return;
+          }
+          addNodes(imported.nodes);
+          toast.success(`${Object.keys(imported.nodes).length} node(s) imported`);
+        }
       } catch (error) {
-        console.error('Failed to parse project file', error);
-        toast.error('Invalid project file');
+        console.error('Failed to import file', error);
+        toast.error('Invalid behavior tree file');
       }
     };
     reader.readAsText(file);
