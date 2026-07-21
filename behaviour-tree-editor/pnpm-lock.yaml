@@ -99,6 +99,9 @@ importers:
       globals:
         specifier: ^16.0.0
         version: 16.0.0
+      playwright-core:
+        specifier: ^1.61.1
+        version: 1.61.1
       typescript:
         specifier: ~5.7.2
         version: 5.7.3
@@ -1972,6 +1975,11 @@ packages:
   pkce-challenge@5.0.0:
     resolution: {integrity: sha512-ueGLflrrnvwB3xuo/uGob5pd5FN7l0MsLf0Z87o/UQmRtwjvfylfc9MurIxRAWywCYTgrvpXBcqjV4OfCYGCIQ==}
     engines: {node: '>=16.20.0'}
+
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   postcss@8.5.3:
     resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
@@ -4248,6 +4256,8 @@ snapshots:
   picomatch@4.0.5: {}
 
   pkce-challenge@5.0.0: {}
+
+  playwright-core@1.61.1: {}
 
   postcss@8.5.3:
     dependencies:
