@@ -26,7 +26,7 @@ const ExampleLoader = () => {
 				const response = await fetch(`/examples/${name}.json`);
 				if (!response.ok) throw new Error(`HTTP ${response.status}`);
 				const imported = parseImportedJson(await response.json());
-				if (imported.kind !== 'tree') throw new Error('example is not a tree file');
+				if (imported.kind === 'nodes') throw new Error('example is not a tree or project file');
 
 				const store = useProjectStore.getState();
 
@@ -57,15 +57,36 @@ const ExampleLoader = () => {
 					}
 				}
 
+				// The classic editor branches on data.trees: project files merge
+				// their custom nodes and every tree into the open project, tree
+				// files import as a single tree (app.js:68-72, ImportManager.js:4-14)
 				const current = useProjectStore.getState();
-				const { tree, nodes } = b3ToTree(imported.tree, current.project!.nodes);
-				current.addImportedTree(tree, nodes);
-				current.saveProject();
+				let label: string;
+
+				if (imported.kind === 'project') {
+					const trees = Object.values(imported.project.trees);
+					if (trees.length === 0) throw new Error('example project has no trees');
+
+					current.addNodes(imported.project.nodes);
+					trees.forEach((tree) => current.addImportedTree(tree, {}));
+
+					const selected = imported.project.selectedTreeId;
+					if (selected && imported.project.trees[selected]) {
+						current.selectTree(selected);
+					}
+					label = imported.project.name;
+				} else {
+					const { tree, nodes } = b3ToTree(imported.tree, current.project!.nodes);
+					current.addImportedTree(tree, nodes);
+					label = tree.title;
+				}
+
+				useProjectStore.getState().saveProject();
 
 				// Drop the query string and land in the editor
 				window.history.replaceState(null, '', '/');
 				navigate('/editor');
-				toast.success(`Example "${tree.title}" loaded`);
+				toast.success(`Example "${label}" loaded`);
 			} catch (error) {
 				console.error('Failed to load example', error);
 				toast.error('Could not load that example');
