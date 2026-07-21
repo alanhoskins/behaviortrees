@@ -1,0 +1,16 @@
+# Netlify build for behaviortrees.com
+#
+# Overrides any Node version pinned in the Netlify UI (the site was pinned to
+# Node 8 from the original behavior3 era). Gulp 3 needs Node <= 22 (see the
+# graceful-fs override in package.json); Astro needs >= 20.
+#
+# NPM_FLAGS keeps Netlify's automatic `npm install` from running the ancient
+# electron-prebuilt postinstall script, which no longer works.
+
+[build]
+  command = "bash build-deploy.sh"
+  publish = "deploy"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--ignore-scripts --no-audit --no-fund"
