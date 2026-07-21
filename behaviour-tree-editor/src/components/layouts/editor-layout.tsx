@@ -1,7 +1,7 @@
 import React, { ReactNode, useState, useEffect, useCallback } from 'react';
 import { Undo2, Redo2, Network } from 'lucide-react';
 import { useProjectStore } from '../../stores/useProjectStore';
-import { b3ToTree, parseImportedJson, projectToB3 } from '../../lib/behavior/b3';
+import { b3ToTree, parseImportedJson } from '../../lib/behavior/b3';
 import { toast } from 'sonner';
 import ExportModal, { ExportType } from '../modals/export-modal';
 
@@ -83,15 +83,9 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
   // Save project to localStorage
   const saveProject = useCallback(() => {
     if (project) {
-      saveProjectStore();
-
-      // Always attempt to save to localStorage after updating store state
-      try {
-        const serialized = projectToB3(project);
-        localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serialized));
+      if (saveProjectStore()) {
         toast.success('Project saved successfully');
-      } catch (error) {
-        console.error('Error saving project:', error);
+      } else {
         toast.error('Failed to save project');
       }
     }
@@ -170,12 +164,18 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
             Please open an existing project or create a new one to start using the editor.
           </p>
           <div className="flex justify-center space-x-4">
-            <button className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition">
+            <a
+              href="/projects"
+              className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
+            >
               Create New Project
-            </button>
-            <button className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">
+            </a>
+            <a
+              href="/projects"
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+            >
               Open Project
-            </button>
+            </a>
           </div>
         </div>
       </div>

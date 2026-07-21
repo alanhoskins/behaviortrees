@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { b3ToProject, parseImportedJson, projectToB3 } from '../../lib/behavior/b3';
 import { Button } from '../../components/ui/button';
-import { Plus, Download, Trash, Edit } from 'lucide-react';
+import { Plus, Download, Trash, FolderOpen, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ProjectsPage: React.FC = () => {
@@ -11,9 +11,13 @@ const ProjectsPage: React.FC = () => {
   const project = useProjectStore(state => state.project);
   const createProject = useProjectStore(state => state.createProject);
   const loadProject = useProjectStore(state => state.loadProject);
+  const renameProject = useProjectStore(state => state.renameProject);
+  const closeProject = useProjectStore(state => state.closeProject);
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   
   // Load projects from localStorage
   const [projects, setProjects] = useState<any[]>([]);
@@ -78,6 +82,29 @@ const ProjectsPage: React.FC = () => {
     linkElement.setAttribute('href', dataUri);
     linkElement.setAttribute('download', exportName);
     linkElement.click();
+  };
+
+  const commitRename = (target: any) => {
+    const name = renameValue.trim();
+    setRenamingId(null);
+    if (!name || name === target.name) return;
+
+    if (project?.id === target.id) {
+      // Open project: rename through the store (also persists)
+      renameProject(name);
+    } else {
+      // Closed project: rewrite its stored payload directly
+      try {
+        const updated = { ...target, name, updatedAt: new Date().toISOString() };
+        localStorage.setItem(`bt-project-${target.id}`, JSON.stringify(projectToB3(updated)));
+      } catch (error) {
+        console.error('Error renaming project:', error);
+        toast.error('Failed to rename project');
+        return;
+      }
+    }
+    setProjects(prev => prev.map(p => (p.id === target.id ? { ...p, name } : p)));
+    toast.success('Project renamed');
   };
 
   const handleImportProject = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,42 +203,90 @@ const ProjectsPage: React.FC = () => {
 
       {projects.length > 0 ? (
         <div className="grid gap-6">
-          {projects.map((project) => (
-            <div key={project.id} className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
+          {projects.map((item) => (
+            <div key={item.id} className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
               <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-xl font-semibold">{project.name}</h3>
-                  <p className="text-slate-600 dark:text-slate-300 mt-1">{project.description}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {renamingId === item.id ? (
+                      <input
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => commitRename(item)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitRename(item);
+                          else if (e.key === 'Escape') setRenamingId(null);
+                        }}
+                        className="text-xl font-semibold px-2 py-0.5 bg-white dark:bg-slate-800 border border-emerald-400 rounded focus:outline-none"
+                        autoFocus
+                      />
+                    ) : (
+                      <h3 className="text-xl font-semibold truncate">{item.name}</h3>
+                    )}
+                    {project?.id === item.id && (
+                      <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                        Open
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 mt-1">{item.description}</p>
                   <div className="flex mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="mr-4">Trees: {Object.keys(project.trees).length}</span>
-                    <span>Last updated: {new Date(project.updatedAt).toLocaleDateString()}</span>
+                    <span className="mr-4">Trees: {Object.keys(item.trees).length}</span>
+                    <span>Last updated: {new Date(item.updatedAt).toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  {project?.id === item.id ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Close project"
+                      onClick={() => {
+                        closeProject();
+                        toast.success('Project closed');
+                      }}
+                    >
+                      <X size={16} />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Open project"
+                      onClick={() => {
+                        loadProject(item);
+                        navigate('/editor');
+                      }}
+                    >
+                      <FolderOpen size={16} />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Rename project"
                     onClick={() => {
-                      // Load this project
-                      loadProject(project);
-                      navigate('/editor');
+                      setRenamingId(item.id);
+                      setRenameValue(item.name);
                     }}
                   >
-                    <Edit size={16} />
+                    <Pencil size={16} />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleExportProject(project)}>
+                  <Button variant="ghost" size="sm" title="Export project" onClick={() => handleExportProject(item)}>
                     <Download size={16} />
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Delete project"
                     onClick={() => {
-                      // Remove from localStorage
-                      localStorage.removeItem(`bt-project-${project.id}`);
-                      
-                      // Update the local state
-                      setProjects(prev => prev.filter(p => p.id !== project.id));
-                      
+                      if (!confirm(`Delete project "${item.name}"?`)) return;
+                      localStorage.removeItem(`bt-project-${item.id}`);
+                      if (project?.id === item.id) {
+                        closeProject();
+                      }
+                      setProjects(prev => prev.filter(p => p.id !== item.id));
                       toast.success('Project deleted');
                     }}
                   >

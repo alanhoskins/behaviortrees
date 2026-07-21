@@ -20,7 +20,6 @@ import 'reactflow/dist/style.css';
 
 import { useProjectStore } from '../../stores/useProjectStore';
 import { Block } from '../../types';
-import { projectToB3 } from '../../lib/behavior/b3';
 import EditorLayout from '../layouts/editor-layout';
 import TreesPanel from '../panels/trees-panel';
 import NodesPanel from '../panels/nodes-panel';
@@ -381,8 +380,7 @@ const BehaviorTreeEditor: React.FC = () => {
           if (autoSave && project) {
             try {
               requestAnimationFrame(() => {
-                const serializedProject = projectToB3(project);
-                localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+                useProjectStore.getState().saveProject();
               });
             } catch (error) {
               console.error('Auto-save failed:', error);
@@ -471,8 +469,7 @@ const BehaviorTreeEditor: React.FC = () => {
             // Auto-save after node position changes
             if (autoSave && project && positionChanges.length > 0) {
               try {
-                const serializedProject = projectToB3(project);
-                localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+                useProjectStore.getState().saveProject();
               } catch (error) {
                 console.error('Auto-save failed:', error);
               }
@@ -502,8 +499,7 @@ const BehaviorTreeEditor: React.FC = () => {
           // Auto-save after node removal
           if (autoSave && project) {
             try {
-              const serializedProject = projectToB3(project);
-              localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+              useProjectStore.getState().saveProject();
             } catch (error) {
               console.error('Auto-save failed:', error);
             }
@@ -535,8 +531,7 @@ const BehaviorTreeEditor: React.FC = () => {
           // Auto-save after connection removal
           if (autoSave && project) {
             try {
-              const serializedProject = projectToB3(project);
-              localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+              useProjectStore.getState().saveProject();
             } catch (error) {
               console.error('Auto-save failed:', error);
             }
@@ -563,8 +558,7 @@ const BehaviorTreeEditor: React.FC = () => {
         // Auto-save after node update
         if (autoSave && project) {
           try {
-            const serializedProject = projectToB3(project);
-            localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+            useProjectStore.getState().saveProject();
           } catch (error) {
             console.error('Auto-save failed:', error);
           }
@@ -661,8 +655,7 @@ const BehaviorTreeEditor: React.FC = () => {
       if (autoSave && project) {
         try {
           requestAnimationFrame(() => {
-            const serializedProject = projectToB3(project);
-            localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+            useProjectStore.getState().saveProject();
           });
         } catch (error) {
           console.error('Auto-save failed:', error);
@@ -709,8 +702,7 @@ const BehaviorTreeEditor: React.FC = () => {
           if (autoSave && project) {
             try {
               requestAnimationFrame(() => {
-                const serializedProject = projectToB3(project);
-                localStorage.setItem(`bt-project-${project.id}`, JSON.stringify(serializedProject));
+                useProjectStore.getState().saveProject();
               });
             } catch (error) {
               console.error('Auto-save failed:', error);

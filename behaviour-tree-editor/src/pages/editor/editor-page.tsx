@@ -1,32 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import BehaviorTreeEditor from '../../components/editor/behavior-tree-editor';
 import { useProjectStore } from '../../stores/useProjectStore';
 
+const hasStoredProjects = (): boolean => {
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('bt-project-')) return true;
+  }
+  return false;
+};
+
 const EditorPage: React.FC = () => {
-  const navigate = useNavigate();
   const project = useProjectStore(state => state.project);
   const createProject = useProjectStore(state => state.createProject);
   const [initialized, setInitialized] = useState(false);
 
-  // Redirect to home if no project, or create a demo project
+  // First-ever visit gets a starter project; anyone who closed their
+  // project on purpose gets the "No Project Open" screen instead
   useEffect(() => {
     if (!project && !initialized) {
-      createProject('Demo Project', 'A demo behavior tree project');
+      if (!hasStoredProjects()) {
+        createProject('Demo Project', 'A demo behavior tree project');
+      }
       setInitialized(true);
     }
-  }, [project, initialized, createProject, navigate]);
+  }, [project, initialized, createProject]);
 
-  if (!project) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Loading project...</h2>
-        </div>
-      </div>
-    );
-  }
-
+  // BehaviorTreeEditor renders the No Project Open screen when project is null
   return <BehaviorTreeEditor />;
 };
 

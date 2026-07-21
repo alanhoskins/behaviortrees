@@ -1,4 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+
+// Minimal localStorage stub — vitest runs in node, and the store's
+// persistence actions consult localStorage lazily
+const memory = new Map<string, string>();
+globalThis.localStorage = {
+  getItem: (k: string) => memory.get(k) ?? null,
+  setItem: (k: string, v: string) => void memory.set(k, String(v)),
+  removeItem: (k: string) => void memory.delete(k),
+  clear: () => memory.clear(),
+  key: (i: number) => [...memory.keys()][i] ?? null,
+  get length() {
+    return memory.size;
+  },
+} as Storage;
+
 import { useProjectStore } from './useProjectStore';
 
 // The store is a singleton; each test starts from a fresh project
@@ -21,6 +36,7 @@ function addBlock(nodeName: string): string {
 }
 
 beforeEach(() => {
+  memory.clear();
   store().createProject('Connection Rules');
 });
 
@@ -204,6 +220,70 @@ describe('organize', () => {
     const tree = store().project!.trees[treeId()];
     expect(tree.blocks[seq].position.y).toBeGreaterThan(tree.blocks[rootId()].position.y);
     expect(tree.blocks[a].position.y).toBeGreaterThan(tree.blocks[seq].position.y);
+  });
+});
+
+describe('project lifecycle persistence', () => {
+  it('createProject and saveProject persist behavior3 JSON and the current pointer', () => {
+    const id = store().project!.id;
+    expect(memory.get('bt-current-project')).toBe(id);
+
+    const raw = memory.get(`bt-project-${id}`);
+    expect(raw).toBeTruthy();
+    const data = JSON.parse(raw!);
+    expect(data.scope).toBe('project');
+    expect(Array.isArray(data.trees)).toBe(true);
+  });
+
+  it('saveProject reflects later mutations', () => {
+    const id = store().project!.id;
+    addBlock('Sequence');
+    expect(store().saveProject()).toBe(true);
+
+    const data = JSON.parse(memory.get(`bt-project-${id}`)!);
+    expect(Object.keys(data.trees[0].nodes)).toHaveLength(1);
+  });
+
+  it('renameProject updates, persists, and is undoable', () => {
+    const id = store().project!.id;
+    store().renameProject('Renamed Project');
+    expect(store().project!.name).toBe('Renamed Project');
+    expect(JSON.parse(memory.get(`bt-project-${id}`)!).name).toBe('Renamed Project');
+
+    store().undo();
+    expect(store().project!.name).toBe('Connection Rules');
+  });
+
+  it('renameTree updates the tree and its root block', () => {
+    store().renameTree(treeId(), 'Main Brain');
+    const tree = store().project!.trees[treeId()];
+    expect(tree.title).toBe('Main Brain');
+    expect(tree.blocks[rootId()].title).toBe('Main Brain');
+  });
+
+  it('closeProject clears state and the current pointer', () => {
+    store().closeProject();
+    expect(store().project).toBeNull();
+    expect(memory.get('bt-current-project')).toBeUndefined();
+  });
+
+  it('restoreLastProject reloads the saved project after a "reload"', () => {
+    const id = store().project!.id;
+    const block = addBlock('Wait');
+    store().saveProject();
+
+    // Simulate a page reload: state gone, localStorage intact
+    useProjectStore.setState({ project: null, undoStack: [], redoStack: [], clipboard: null });
+
+    expect(store().restoreLastProject()).toBe(true);
+    expect(store().project!.id).toBe(id);
+    expect(store().project!.trees[treeId()].blocks[block]).toBeDefined();
+    expect(store().project!.trees[treeId()].blocks[block].name).toBe('Wait');
+  });
+
+  it('restoreLastProject returns false with no pointer', () => {
+    store().closeProject();
+    expect(store().restoreLastProject()).toBe(false);
   });
 });
 

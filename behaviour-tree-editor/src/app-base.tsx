@@ -11,16 +11,14 @@ import SettingsPage from './pages/settings/settings-page';
 import './index.css';
 
 function App() {
-	const createProject = useProjectStore((state) => state.createProject);
-	const project = useProjectStore((state) => state.project);
+	const restoreLastProject = useProjectStore((state) => state.restoreLastProject);
 
-	// Create a demo project if none exists (first load)
+	// Reopen the last project on startup, like the old editor's recents
 	useEffect(() => {
-		if (!project) {
-			// Don't auto create here since each page will decide what to do
-			// createProject('Demo Project', 'A demo behavior tree project');
-		}
+		restoreLastProject();
+	}, [restoreLastProject]);
 
+	useEffect(() => {
 		// Initialize theme from localStorage
 		const savedTheme = localStorage.getItem('bt-theme');
 		if (savedTheme === 'dark') {
@@ -33,7 +31,7 @@ function App() {
 				document.documentElement.classList.add('dark');
 			}
 		}
-	}, [project, createProject]);
+	}, []);
 
 	return (
 		<BrowserRouter>

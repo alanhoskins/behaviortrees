@@ -4,6 +4,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { Block, Connection, Node, Project, Tree } from '../types';
 import { DEFAULT_NODES } from '../lib/behavior/defaults';
 import { organizeTree, TreeLayout } from '../lib/behavior/organize';
+import { parseImportedJson, projectToB3 } from '../lib/behavior/b3';
+
+const PROJECT_KEY_PREFIX = 'bt-project-';
+const CURRENT_PROJECT_KEY = 'bt-current-project';
+
+const storage = (): Storage | null =>
+  typeof localStorage === 'undefined' ? null : localStorage;
 
 type Clipboard = {
   blocks: Block[];
@@ -21,7 +28,10 @@ interface ProjectState {
 
   // Actions
   createProject: (name: string, description?: string) => void;
+  renameProject: (name: string, description?: string) => void;
+  closeProject: () => void;
   createTree: (title: string, description?: string) => string;
+  renameTree: (treeId: string, title: string, description?: string) => void;
   deleteTree: (treeId: string) => void;
   selectTree: (treeId: string) => void;
   
@@ -47,8 +57,9 @@ interface ProjectState {
   organize: (treeId: string, layout?: TreeLayout) => void;
   
   // Project operations
-  saveProject: () => void;
+  saveProject: () => boolean;
   loadProject: (projectData: Project) => void;
+  restoreLastProject: () => boolean;
   addImportedTree: (tree: Tree, nodes: Record<string, Node>) => void;
   addNodes: (nodes: Record<string, Node>) => void;
   
@@ -154,6 +165,33 @@ export const useProjectStore = create<ProjectState>()(
         state.redoStack = [];
         state.clipboard = null;
       });
+      get().saveProject();
+    },
+
+    renameProject: (name, description) => {
+      set(state => {
+        if (state.project && name.trim()) {
+          state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+          state.redoStack = [];
+
+          state.project.name = name.trim();
+          if (description !== undefined) {
+            state.project.description = description;
+          }
+          state.project.updatedAt = timestamp();
+        }
+      });
+      get().saveProject();
+    },
+
+    closeProject: () => {
+      set(state => {
+        state.project = null;
+        state.undoStack = [];
+        state.redoStack = [];
+        state.clipboard = null;
+      });
+      storage()?.removeItem(CURRENT_PROJECT_KEY);
     },
     
     createTree: (title, description) => {
@@ -196,6 +234,29 @@ export const useProjectStore = create<ProjectState>()(
       return treeId;
     },
     
+    renameTree: (treeId, title, description) => {
+      set(state => {
+        const tree = state.project?.trees[treeId];
+        if (!state.project || !tree || !title.trim()) return;
+
+        state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+        state.redoStack = [];
+
+        tree.title = title.trim();
+        if (description !== undefined) {
+          tree.description = description;
+        }
+        // The root block mirrors the tree title/description in behavior3
+        if (tree.rootId && tree.blocks[tree.rootId]) {
+          tree.blocks[tree.rootId].title = tree.title;
+          if (description !== undefined) {
+            tree.blocks[tree.rootId].description = description;
+          }
+        }
+        state.project.updatedAt = timestamp();
+      });
+    },
+
     deleteTree: (treeId) => {
       set(state => {
         if (state.project) {
@@ -551,22 +612,21 @@ export const useProjectStore = create<ProjectState>()(
     },
     
     saveProject: () => {
-      // Save the project to localStorage
       const { project } = get();
-      if (project) {
-        try {
-          // We'll let the UI handle the actual serialization and storage
-          // Just log the save for now
-          console.log('Project saved', project);
-          return true;
-        } catch (error) {
-          console.error('Error saving project', error);
-          return false;
-        }
+      const store = storage();
+      if (!project || !store) return false;
+
+      try {
+        const serialized = projectToB3(project);
+        store.setItem(`${PROJECT_KEY_PREFIX}${project.id}`, JSON.stringify(serialized));
+        store.setItem(CURRENT_PROJECT_KEY, project.id);
+        return true;
+      } catch (error) {
+        console.error('Error saving project', error);
+        return false;
       }
-      return false;
     },
-    
+
     loadProject: (projectData) => {
       set(state => {
         state.project = projectData;
@@ -575,6 +635,28 @@ export const useProjectStore = create<ProjectState>()(
         state.clipboard = null;
         return state; // Explicitly return state to satisfy TypeScript
       });
+      storage()?.setItem(CURRENT_PROJECT_KEY, projectData.id);
+    },
+
+    restoreLastProject: () => {
+      const store = storage();
+      if (!store || get().project) return false;
+
+      const id = store.getItem(CURRENT_PROJECT_KEY);
+      if (!id) return false;
+
+      const raw = store.getItem(`${PROJECT_KEY_PREFIX}${id}`);
+      if (!raw) return false;
+
+      try {
+        const imported = parseImportedJson(JSON.parse(raw));
+        if (imported.kind !== 'project') return false;
+        get().loadProject(imported.project);
+        return true;
+      } catch (error) {
+        console.error('Error restoring last project', error);
+        return false;
+      }
     },
 
     addImportedTree: (tree, nodes) => {
