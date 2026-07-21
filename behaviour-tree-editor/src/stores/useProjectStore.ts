@@ -28,7 +28,7 @@ interface ProjectState {
   deleteBlock: (treeId: string, blockId: string) => void;
   
   // Connection operations
-  createConnection: (treeId: string, sourceId: string, targetId: string) => string;
+  createConnection: (treeId: string, sourceId: string, targetId: string) => string | null;
   deleteConnection: (treeId: string, connectionId: string) => void;
   
   // Project operations
@@ -328,42 +328,52 @@ export const useProjectStore = create<ProjectState>()(
     },
     
     createConnection: (treeId, sourceId, targetId) => {
-      const connectionId = uuidv4();
-      
+      let connectionId: string | null = null;
+
       set(state => {
-        if (
-          state.project && 
-          state.project.trees[treeId] && 
-          state.project.trees[treeId].blocks[sourceId] && 
-          state.project.trees[treeId].blocks[targetId]
-        ) {
-          // Save current state to undo stack
-          state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
-          state.redoStack = [];
-          
-          // Check if target already has an incoming connection
-          const hasIncomingConnection = Object.values(state.project.trees[treeId].connections)
-            .some(connection => connection.target === targetId);
-          
-          // Only allow one incoming connection per block
-          if (hasIncomingConnection) {
-            return;
-          }
-          
-          // Create new connection
-          const connection: Connection = {
-            id: connectionId,
-            source: sourceId,
-            target: targetId
-          };
-          
-          // Add connection to tree
-          state.project.trees[treeId].connections[connectionId] = connection;
-          
-          state.project.updatedAt = timestamp();
+        const tree = state.project?.trees[treeId];
+        const source = tree?.blocks[sourceId];
+        const target = tree?.blocks[targetId];
+        if (!state.project || !tree || !source || !target) return;
+
+        // behavior3 arity rules, matching the old editor's ConnectionSystem:
+        // nothing connects into a root or to itself, and leaves have no children
+        if (sourceId === targetId) return;
+        if (target.category === 'root') return;
+        if (source.category === 'action' || source.category === 'condition') return;
+
+        // Save current state to undo stack
+        state.undoStack.push(JSON.parse(JSON.stringify(state.project)));
+        state.redoStack = [];
+
+        // A block keeps a single parent: a new connection replaces it
+        Object.values(tree.connections)
+          .filter(connection => connection.target === targetId)
+          .forEach(connection => {
+            delete tree.connections[connection.id];
+          });
+
+        // Root and decorators keep a single child: replace the previous one
+        if (source.category === 'root' || source.category === 'decorator') {
+          Object.values(tree.connections)
+            .filter(connection => connection.source === sourceId)
+            .forEach(connection => {
+              delete tree.connections[connection.id];
+            });
         }
+
+        const id = uuidv4();
+        const connection: Connection = {
+          id,
+          source: sourceId,
+          target: targetId
+        };
+
+        tree.connections[id] = connection;
+        connectionId = id;
+        state.project.updatedAt = timestamp();
       });
-      
+
       return connectionId;
     },
     

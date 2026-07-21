@@ -634,6 +634,22 @@ const BehaviorTreeEditor: React.FC = () => {
     ? project.trees[selectedTreeId].blocks[selectedNode.id]
     : undefined;
 
+  // Mirror the store's connection rules so invalid drops are rejected visually
+  const isValidConnection = useCallback(
+    (connection: Connection) => {
+      if (!project || !selectedTreeId || !connection.source || !connection.target) return false;
+      const tree = project.trees[selectedTreeId];
+      const source = tree?.blocks[connection.source];
+      const target = tree?.blocks[connection.target];
+      if (!source || !target) return false;
+      if (connection.source === connection.target) return false;
+      if (target.category === 'root') return false;
+      if (source.category === 'action' || source.category === 'condition') return false;
+      return true;
+    },
+    [project, selectedTreeId]
+  );
+
   return (
     <EditorLayout
       canvas={
@@ -646,6 +662,7 @@ const BehaviorTreeEditor: React.FC = () => {
             onConnect={onConnect}
             onConnectStart={onConnectStart}
             onConnectEnd={onConnectEnd}
+            isValidConnection={isValidConnection}
             onNodeClick={onNodeClick}
             onInit={setReactFlowInstance}
             onDragOver={onDragOver}
