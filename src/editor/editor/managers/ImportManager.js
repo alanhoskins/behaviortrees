@@ -88,6 +88,7 @@ b3e.editor.ImportManager = function(editor) {
 
     if (!data.display) {
       tree.organize.organize(null, true);
+      tree.view.fitToScreen();
     }
 
     tree.selection.deselectAll();

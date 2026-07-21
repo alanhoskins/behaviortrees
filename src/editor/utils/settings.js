@@ -14,7 +14,14 @@
     zoom_min     : 0.25,
     zoom_max     : 2.0,
     zoom_step    : 0.25,
-    
+
+    // VIEWPORT (insets mirror @size-sidebar/@size-menubar in assets/less/variables.less)
+    viewport_inset_left   : 250,
+    viewport_inset_right  : 250,
+    viewport_inset_top    : 35,
+    viewport_inset_bottom : 0,
+    viewport_padding      : 40,
+
     // EDITOR
     snap_x        : 12,
     snap_y        : 12,

@@ -43,6 +43,7 @@
     vm.onAutoOrganize      = onAutoOrganize;
     vm.onZoomIn            = onZoomIn;
     vm.onZoomOut           = onZoomOut;
+    vm.onCenterView        = onCenterView;
     vm.onSelectAll         = onSelectAll;
     vm.onDeselectAll       = onDeselectAll;
     vm.onInvertSelection   = onInvertSelection;
@@ -81,6 +82,7 @@
       Mousetrap.bind('ctrl+d', onDuplicate);
       Mousetrap.bind('del', onRemove);
       Mousetrap.bind('a', onAutoOrganize);
+      Mousetrap.bind('c', onCenterView);
       Mousetrap.bind('ctrl+a', onSelectAll);
       Mousetrap.bind('ctrl+shift+a', onDeselectAll);
       Mousetrap.bind('ctrl+i', onInvertSelection);
@@ -96,6 +98,7 @@
       Mousetrap.unbind('ctrl+d', onDuplicate);
       Mousetrap.unbind('del', onRemove);
       Mousetrap.unbind('a', onAutoOrganize);
+      Mousetrap.unbind('c', onCenterView);
       Mousetrap.unbind('ctrl+a', onSelectAll);
       Mousetrap.unbind('ctrl+shift+a', onDeselectAll);
       Mousetrap.unbind('ctrl+i', onInvertSelection);
@@ -237,6 +240,11 @@
     function onZoomOut() {
       var tree = _getTree();
       tree.view.zoomOut();
+      return false;
+    }
+    function onCenterView() {
+      var tree = _getTree();
+      tree.view.fitToScreen();
       return false;
     }
     function onSelectAll() {
