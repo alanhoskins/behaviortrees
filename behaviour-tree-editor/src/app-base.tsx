@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { useProjectStore } from './stores/useProjectStore';
 import { Toaster } from 'sonner';
 import AppLayout from './components/layouts/app-layout';
+import ExampleLoader from './components/example-loader';
 import HomePage from './pages/home/home-page';
 import EditorPage from './pages/editor/editor-page';
 import ProjectsPage from './pages/projects/projects-page';
@@ -36,6 +37,7 @@ function App() {
 	return (
 		<BrowserRouter>
 			<Toaster position="bottom-right" />
+			<ExampleLoader />
 			<AppLayout>
 				<Routes>
 					<Route path="/" element={<HomePage />} />

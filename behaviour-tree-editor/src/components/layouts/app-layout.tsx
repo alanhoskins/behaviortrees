@@ -65,6 +65,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                   Settings
                 </NavLink>
               </li>
+              <li>
+                {/* Static guides site deployed alongside the app */}
+                <a
+                  href="/learn/"
+                  className="text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
+                >
+                  Learn
+                </a>
+              </li>
             </ul>
           </nav>
         </div>
@@ -74,7 +83,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       </main>
       <footer className="bg-white dark:bg-slate-800 shadow-inner mt-10">
         <div className="container mx-auto px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-sm">
-          &copy; {new Date().getFullYear()} Behavior Tree Editor. Modern version of <a href="http://behavior3.com" className="text-emerald-500 hover:underline">Behavior3 Editor</a>.
+          &copy; {new Date().getFullYear()} behaviortrees.com ·{' '}
+          <a href="/learn/" className="text-emerald-500 hover:underline">Learn behavior trees</a> ·{' '}
+          Prefer the classic editor? It lives on at{' '}
+          <a href="https://old.behaviortrees.com" className="text-emerald-500 hover:underline">old.behaviortrees.com</a>.
         </div>
       </footer>
     </div>

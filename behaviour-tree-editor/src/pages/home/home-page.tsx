@@ -9,10 +9,20 @@ const HomePage: React.FC = () => {
 		<div className="max-w-4xl mx-auto">
 			<div className="text-center mb-12">
 				<h1 className="text-4xl font-bold mb-4 text-slate-900 dark:text-white">
-					Behavior Trees Editor
+					Behavior Tree Editor
 				</h1>
 				<p className="text-xl text-slate-600 dark:text-slate-300">
-					A modern editor for creating and editing behavior trees for games and AI.
+					A free online editor for creating behavior trees for games, AI, and robotics.
+				</p>
+				<p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+					New to behavior trees? Read the{' '}
+					<a href="/learn/" className="text-emerald-500 hover:underline">guides</a> or open an
+					example:{' '}
+					<a href="/?example=enemy-patrol" className="text-emerald-500 hover:underline">enemy patrol AI</a>,{' '}
+					<a href="/?example=open-the-door" className="text-emerald-500 hover:underline">selector vs sequence</a>,{' '}
+					<a href="/?example=robot-pick-and-place" className="text-emerald-500 hover:underline">robot pick &amp; place</a>.
+					Prefer the classic editor?{' '}
+					<a href="https://old.behaviortrees.com" className="text-emerald-500 hover:underline">old.behaviortrees.com</a>
 				</p>
 			</div>
 
