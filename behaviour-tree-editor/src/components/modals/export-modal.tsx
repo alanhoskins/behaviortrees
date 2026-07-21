@@ -146,7 +146,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[700px]">
 				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2 text-white">
+					<DialogTitle className="flex items-center gap-2 text-fg">
 						Export
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
@@ -177,7 +177,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 						<textarea
 							ref={textAreaRef}
 							readOnly
-							className="w-full h-[300px] p-4 font-mono text-sm rounded-md border resize-none bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none"
+							className="h-[300px] font-mono text-sm resize-none"
 							value={exportData}
 						/>
 					</div>
@@ -195,7 +195,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 							<DownloadIcon className="h-4 w-4" />
 							Download
 						</Button>
-						<Button variant="outline" className="text-white" onClick={() => onOpenChange(false)}>
+						<Button variant="outline" onClick={() => onOpenChange(false)}>
 							Close
 						</Button>
 					</div>

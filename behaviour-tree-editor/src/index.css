@@ -1,13 +1,429 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+@custom-variant light (&:where([data-theme='light'], [data-theme='light'] *));
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Inter — self-hosted variable roman. latin-ext only downloads when a page
+   actually uses those codepoints.
+   ────────────────────────────────────────────────────────────────────────── */
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('/fonts/inter-latin.woff2') format('woff2');
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+		U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308,
+		U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+		U+A720-A7FF;
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
+/* Metric-matched fallback so the swap doesn't reflow the editor chrome. */
+@font-face {
+	font-family: 'Inter Fallback';
+	src: local('Helvetica Neue'), local('Arial');
+	size-adjust: 107%;
+	ascent-override: 90%;
+	descent-override: 22.5%;
+	line-gap-override: 0%;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LAYER A — static scales. These do not differ between themes.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme {
+	/* Nocturne tonal ramps, generated in OKLCH on one shared lightness scale. */
+	--color-neutral-100: #f3f5fe;
+	--color-neutral-200: #e4e7f5;
+	--color-neutral-300: #cfd3e5;
+	--color-neutral-400: #b2b6ca;
+	--color-neutral-500: #9397ab;
+	--color-neutral-600: #75798c;
+	--color-neutral-700: #595d6c;
+	--color-neutral-800: #3f424d;
+	--color-neutral-900: #292b31;
+
+	--color-accent-100: #f5f4ff;
+	--color-accent-200: #e7e5fe;
+	--color-accent-300: #d2cefd;
+	--color-accent-400: #b5abfc;
+	--color-accent-500: #968ae0;
+	--color-accent-600: #796cbf;
+	--color-accent-700: #5d5294;
+	--color-accent-800: #423a6a;
+	--color-accent-900: #2b2741;
+
+	/* Node categories — muted to sit beside the accent, never to compete. */
+	--color-cat-composite: #7f9cc4;
+	--color-cat-decorator: #a08ac0;
+	--color-cat-action: #79ad9a;
+	--color-cat-condition: #c0a678;
+	--color-cat-root: #9184d9;
+
+	--font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
+	--font-body: var(--font-sans);
+	--font-heading: var(--font-sans);
+	--font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+	/* Density 0.70x. Nocturne's --space-1..8 is 1,2,3,4,6,8 x 2.8px, which is
+	   exactly what a 2.8px spacing base reproduces — so every existing p-4 /
+	   gap-2 / w-64 in the app retunes to Nocturne density with no edits. */
+	--spacing: 0.175rem;
+
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 14px;
+	--radius-xl: 14px;
+	--radius-2xl: 14px;
+
+	/* Nocturne never bolds past 500 — hierarchy is size and space. Capping the
+	   token means the rule cannot be violated by a stray font-bold. */
+	--font-weight-semibold: 500;
+	--font-weight-bold: 500;
+	--font-weight-extrabold: 600;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LAYER B — the flippable semantic values, in plain CSS under Nocturne's own
+   variable names. This block is deliberately framework-free so it can be
+   copied verbatim into the Astro guides site, which has no Tailwind.
+   ────────────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme='dark'] {
+	color-scheme: dark;
+
+	/* Nocturne's roles carry a --bt- prefix rather than its literal
+	   --color-bg / --color-text / --color-accent names: those collide with
+	   Tailwind v4's own --color-* namespace, and a token that both defines
+	   and consumes the same name resolves to nothing. */
+	--bt-bg: #161826;
+	--bt-text: #e9e9ed;
+	--bt-accent: #9184d9;
+	--bt-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+
+	--mut: #9397ab;
+	--faint: #75798c;
+	--brd: #3f424d;
+	--panel: #232532;
+	--raised: #272a38;
+	--inputbg: #1c1e2b;
+	--acc-soft: #d2cefd;
+	--acc-hover: #a7a1db;
+	--acc-wash: color-mix(in srgb, #9184d9 16%, #232532);
+	--on-acc: #161826;
+	--edge: #595d6c;
+	--glow: rgba(145, 132, 217, 0.32);
+	--overlay: rgba(11, 12, 20, 0.72);
+	--knob: #e9e9ed;
+	--canvas-dot: #292b31;
+
+	/* Status roles are not in Nocturne — invented, desaturated toward the
+	   accent's chroma so they read as part of the system. */
+	--danger: #d97b83;
+	--danger-soft: #eab4b9;
+	--success: #7fbb9c;
+	--success-soft: #b3d8c6;
+	--warning: #ccab74;
+	--warning-soft: #e3cea7;
+
+	/* On a dark ground, elevation is a hairline edge plus ambient darkness. */
+	--shadow-hairline: 0 0 0 1px #3f424d;
+	--shadow-raised: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+	--shadow-top: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
+}
+
+[data-theme='light'] {
+	color-scheme: light;
+
+	--bt-bg: #e4e7f5;
+	--bt-text: #292b31;
+	--bt-divider: color-mix(in srgb, #292b31 16%, transparent);
+
+	--mut: #595d6c;
+	--faint: #75798c;
+	--brd: #b2b6ca;
+	--panel: #f3f5fe;
+	--raised: #ffffff;
+	--inputbg: #e4e7f5;
+	--acc-soft: #5d5294;
+	--acc-hover: #796cbf;
+	--acc-wash: color-mix(in srgb, #9184d9 16%, #f3f5fe);
+	--on-acc: #f3f5fe;
+	--edge: #9397ab;
+	--glow: rgba(145, 132, 217, 0.45);
+	--overlay: rgba(41, 43, 49, 0.4);
+	--knob: #f3f5fe;
+	--canvas-dot: #b2b6ca;
+
+	--danger: #a8474f;
+	--danger-soft: #7d353b;
+	--success: #3f7a5f;
+	--success-soft: #2f5c47;
+	--warning: #8a6a2f;
+	--warning-soft: #6a5124;
+
+	--shadow-hairline: 0 0 0 1px #b2b6ca;
+	--shadow-raised: 0 0 0 1px #9397ab, 0 6px 18px rgba(41, 43, 49, 0.14);
+	--shadow-top: 0 0 0 1px #75798c, 0 16px 40px rgba(41, 43, 49, 0.2);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LAYER C — bridge Layer B into Tailwind's namespaces so utilities generate.
+   `inline` is required: it makes Tailwind emit `.bg-surface { background:
+   var(--panel) }` rather than resolving the value once at :root, which is
+   what lets a nested [data-theme] wrapper actually override.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+	--color-base: var(--bt-bg);
+	--color-surface: var(--panel);
+	--color-raised: var(--raised);
+	--color-inset: var(--inputbg);
+	--color-border: var(--brd);
+	--color-divider: var(--bt-divider);
+	--color-overlay: var(--overlay);
+
+	--color-fg: var(--bt-text);
+	--color-muted: var(--mut);
+	--color-faint: var(--faint);
+
+	--color-accent: var(--bt-accent);
+	--color-accent-hover: var(--acc-hover);
+	--color-accent-soft: var(--acc-soft);
+	--color-accent-wash: var(--acc-wash);
+	--color-on-accent: var(--on-acc);
+
+	--color-danger: var(--danger);
+	--color-danger-soft: var(--danger-soft);
+	--color-success: var(--success);
+	--color-success-soft: var(--success-soft);
+	--color-warning: var(--warning);
+	--color-warning-soft: var(--warning-soft);
+
+	--color-edge: var(--edge);
+	--color-canvas-dot: var(--canvas-dot);
+	--color-knob: var(--knob);
+
+	/* Every existing shadow-sm/md/lg site retunes to Nocturne elevation with
+	   no component edits. The hairline colour has to flip with the theme,
+	   which is why these live in Layer B rather than Layer A. */
+	--shadow-2xs: var(--shadow-hairline);
+	--shadow-xs: var(--shadow-hairline);
+	--shadow-sm: var(--shadow-hairline);
+	--shadow-md: var(--shadow-raised);
+	--shadow-lg: var(--shadow-raised);
+	--shadow-xl: var(--shadow-top);
+	--shadow-2xl: var(--shadow-top);
+	--inset-shadow-sm: var(--shadow-hairline);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Base
+   ────────────────────────────────────────────────────────────────────────── */
+@layer base {
+	/* The canvas keeps Tailwind's stock 4px spacing base. Nocturne's 0.70x
+	   density is right for the chrome, but inside ReactFlow it also shrinks the
+	   connection handles (w-3: 12px -> 8.4px), and an 8px hit-target that
+	   competes with panOnDrag makes edges hard to draw. Scoped here rather than
+	   in the node components so the canvas stays untouched. */
+	.react-flow {
+		--spacing: 0.25rem;
+	}
+
+	html {
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	body {
+		margin: 0;
+		min-width: 320px;
+		min-height: 100vh;
+		background: var(--bt-bg);
+		color: var(--bt-text);
+		font-family: var(--font-body);
+		font-size: 15px;
+		line-height: 1.55;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-heading);
+		font-weight: 500;
+		line-height: 1.12;
+		letter-spacing: -0.015em;
+	}
+
+	/* Themed interaction states — Nocturne mandates these globally rather
+	   than per-component, so the ring-* chains in ui/* can all go away. */
+	:focus {
+		outline: none;
+	}
+	:focus-visible {
+		outline: 2px solid var(--bt-accent);
+		outline-offset: 2px;
+	}
+	::selection {
+		background: color-mix(in srgb, var(--bt-accent) 30%, transparent);
+	}
+
+	:disabled,
+	[aria-disabled='true'] {
+		opacity: 0.45;
+	}
+
+	/* There is no <Input> component and every input in the app already carries
+	   an identical 12-utility class string. Styling the elements themselves
+	   absorbs that repetition and makes future inputs correct by default. */
+	input:not([type='checkbox']):not([type='radio']):not([type='file']),
+	select,
+	textarea {
+		width: 100%;
+		padding: 6px 10px;
+		font: inherit;
+		font-size: 14px;
+		color: var(--bt-text);
+		caret-color: var(--bt-accent);
+		background: var(--inputbg);
+		border: 1px solid var(--brd);
+		border-radius: var(--radius-md);
+		transition: border-color 0.15s;
+	}
+	input:not([type='checkbox']):not([type='radio']):not([type='file']):hover,
+	select:hover,
+	textarea:hover {
+		border-color: var(--mut);
+	}
+	input:not([type='checkbox']):not([type='radio']):not([type='file']):focus-visible,
+	select:focus-visible,
+	textarea:focus-visible {
+		border-color: var(--bt-accent);
+		outline-offset: 0;
+	}
+	textarea {
+		resize: vertical;
+	}
+	::placeholder {
+		color: var(--faint);
+	}
+	input[type='checkbox'] {
+		accent-color: var(--bt-accent);
+	}
+
+	/* Sonner reads these off :root — four lines re-skins every toast. */
+	:root {
+		--normal-bg: var(--panel);
+		--normal-text: var(--bt-text);
+		--normal-border: var(--brd);
+	}
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Components — only patterns that repeat 4+ times as a real UI atom.
+   ────────────────────────────────────────────────────────────────────────── */
+@layer components {
+	/* Nocturne's signature rule: fades to transparent over 48px at each end. */
+	.rule-fade {
+		height: 1px;
+		border: 0;
+		background: linear-gradient(
+			to right,
+			transparent,
+			var(--bt-divider) 48px,
+			var(--bt-divider) calc(100% - 48px),
+			transparent
+		);
+	}
+
+	.panel {
+		background: var(--panel);
+		display: flex;
+		flex-direction: column;
+	}
+
+	.panel-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--bt-divider);
+		font-size: 13px;
+		font-weight: 500;
+	}
+
+	.no-scrollbar {
+		scrollbar-width: none;
+	}
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+
+	.kicker {
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--mut);
+	}
+
+	.card {
+		background: var(--panel);
+		border: 1px solid var(--brd);
+		border-radius: var(--radius-lg);
+		padding: 22px 26px;
+	}
+
+	/* The editor toolbar's icon + text buttons. Outlined, never filled. */
+	.toolbar-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		height: 30px;
+		padding: 0 12px;
+		font-size: 13px;
+		font-weight: 400;
+		color: var(--bt-text);
+		background: transparent;
+		border: 1px solid var(--brd);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		transition: border-color 0.15s, background 0.15s, color 0.15s;
+	}
+	.toolbar-btn:hover:not(:disabled) {
+		border-color: var(--bt-accent);
+		color: var(--acc-soft);
+	}
+	.toolbar-btn:active:not(:disabled) {
+		background: color-mix(in srgb, var(--bt-accent) 18%, transparent);
+	}
+	.toolbar-btn:disabled {
+		cursor: not-allowed;
+	}
+	.toolbar-btn--icon {
+		width: 30px;
+		padding: 0;
+	}
+	.toolbar-btn--accent {
+		color: var(--acc-soft);
+		border-color: var(--bt-accent);
+		font-weight: 500;
+	}
+	.toolbar-btn--accent:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--bt-accent) 14%, transparent);
+	}
 }

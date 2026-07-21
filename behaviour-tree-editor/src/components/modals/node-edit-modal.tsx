@@ -39,9 +39,6 @@ const parseValue = (raw: string): unknown => {
 	}
 };
 
-const inputClass =
-	'w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm text-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500';
-
 const NodeEditModal: React.FC<NodeEditModalProps> = ({
 	open,
 	onOpenChange,
@@ -128,7 +125,7 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 								value={name}
 								onChange={(e) => setName(e.target.value)}
 								placeholder="MyCustomAction"
-								className={inputClass}
+								className="text-sm"
 								autoFocus
 							/>
 						</div>
@@ -137,7 +134,7 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 							<select
 								value={category}
 								onChange={(e) => setCategory(e.target.value as NodeCategory)}
-								className={inputClass}
+								className="text-sm"
 							>
 								{CATEGORIES.map((c) => (
 									<option key={c} value={c}>
@@ -155,7 +152,7 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="Shown on blocks (defaults to name)"
-							className={inputClass}
+							className="text-sm"
 						/>
 					</div>
 
@@ -165,7 +162,7 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							rows={2}
-							className={inputClass}
+							className="text-sm"
 						/>
 					</div>
 
@@ -176,13 +173,13 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 								variant="ghost"
 								size="sm"
 								onClick={() => setRows((r) => [...r, { key: '', value: '' }])}
-								className="h-7 gap-1 text-emerald-600 dark:text-emerald-400"
+								className="h-7 gap-1 text-accent-soft"
 							>
 								<Plus size={14} /> Add
 							</Button>
 						</div>
 						{rows.length === 0 ? (
-							<div className="text-xs text-slate-500 dark:text-slate-400 italic">
+							<div className="text-xs text-faint italic">
 								No properties. Blocks created from this node inherit these as defaults.
 							</div>
 						) : (
@@ -196,7 +193,7 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 											onChange={(e) =>
 												setRows((r) => r.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))
 											}
-											className={inputClass}
+											className="text-sm"
 										/>
 										<input
 											type="text"
@@ -205,11 +202,11 @@ const NodeEditModal: React.FC<NodeEditModalProps> = ({
 											onChange={(e) =>
 												setRows((r) => r.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))
 											}
-											className={inputClass}
+											className="text-sm"
 										/>
 										<button
 											onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
-											className="px-2 text-slate-400 hover:text-red-500"
+											className="px-2 text-faint hover:text-danger-soft"
 											title="Remove property"
 										>
 											<Trash2 size={14} />
