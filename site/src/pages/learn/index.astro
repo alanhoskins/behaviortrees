@@ -1,0 +1,29 @@
+---
+import ArticleLayout from '../../layouts/ArticleLayout.astro';
+
+const posts = Object.values(
+    import.meta.glob('./*.md', { eager: true })
+).sort((a, b) => (a.frontmatter.order ?? 99) - (b.frontmatter.order ?? 99));
+---
+
+<ArticleLayout
+    title="Learn Behavior Trees - Guides for Game AI and Robotics"
+    description="Practical guides to behavior trees: core concepts, node types, comparisons with state machines, and how to use behavior trees in Unity, Unreal Engine, and robotics."
+>
+    <h1>Learn Behavior Trees</h1>
+    <p>
+        Behavior trees are the standard way to structure decision-making for game AI and,
+        increasingly, robotics. These guides teach the concepts from the ground up — and every
+        example can be opened in our <a href="/">free online behavior tree editor</a>, so you can
+        poke at real trees instead of just reading about them.
+    </p>
+
+    <ul class="article-list">
+        {posts.map((post) => (
+            <li>
+                <a href={post.url}>{post.frontmatter.title}</a>
+                <p>{post.frontmatter.description}</p>
+            </li>
+        ))}
+    </ul>
+</ArticleLayout>

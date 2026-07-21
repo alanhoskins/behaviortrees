@@ -69,6 +69,9 @@ var app_less = [
 var app_imgs = [
   'src/assets/imgs/**/*',
 ];
+var app_examples = [
+  'src/examples/**/*.json',
+];
 var app_html = [
   'src/app/**/*.html',
 ];
@@ -158,6 +161,11 @@ gulp.task('_app_imgs', function() {
              .pipe(gulp.dest('build/imgs'))
 });
 
+gulp.task('_app_examples', function() {
+  return gulp.src(app_examples)
+             .pipe(gulp.dest('build/examples'))
+});
+
 gulp.task('_app_html', function() {
   return gulp.src(app_html)
              .pipe(minifyHTML({empty:true}))
@@ -181,6 +189,7 @@ gulp.task('_app_dev', [
   '_app_js_dev',
   '_app_less',
   '_app_imgs',
+  '_app_examples',
   '_app_html',
   '_app_entry'
 ]);
@@ -188,6 +197,7 @@ gulp.task('_app_build', [
   '_app_js_build',
   '_app_less',
   '_app_imgs',
+  '_app_examples',
   '_app_html',
   '_app_entry'
 ]);

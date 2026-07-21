@@ -1,0 +1,6 @@
+{
+  "installCommand": "npm install --ignore-scripts --no-audit --no-fund && npx bower install --config.interactive=false && cd site && npm install --no-audit --no-fund",
+  "buildCommand": "bash build-deploy.sh",
+  "outputDirectory": "deploy",
+  "framework": null
+}

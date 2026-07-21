@@ -35,6 +35,8 @@ bower_components
 dist
 .temp-dist
 build
+deploy
+site/dist
 src/vendor
 cache
 teste.py

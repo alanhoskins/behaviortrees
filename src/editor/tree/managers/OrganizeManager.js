@@ -112,7 +112,7 @@ b3e.tree.OrganizeManager = function(editor, project, tree) {
     leafCount     = 0;
     connections  = [];
     blocks       = [];
-    orderByIndex = orderByIndex;
+    orderByIndex = byIndex;
 
     var offsetX = root.x;
     var offsetY = root.y;

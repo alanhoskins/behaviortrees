@@ -1,0 +1,25 @@
+{
+  "id": "robot-pick-and-place",
+  "title": "Robot Pick And Place",
+  "description": "A robotics-style task: acquire an object if not already holding one, carry it to the target, and place it. Grasping retries until it succeeds.",
+  "root": "n1",
+  "properties": {},
+  "custom_nodes": [
+    { "name": "IsHoldingObject", "category": "condition", "title": "Is Holding Object?", "description": "Succeeds if the gripper currently holds the object.", "properties": {} },
+    { "name": "MoveToObject", "category": "action", "title": "Move To Object", "description": "Plans and executes a motion to the object's pose.", "properties": { "tolerance": 0.01 } },
+    { "name": "GraspObject", "category": "action", "title": "Grasp Object", "description": "Closes the gripper on the object.", "properties": { "force": 20 } },
+    { "name": "MoveToTarget", "category": "action", "title": "Move To Target", "description": "Carries the object to the target location.", "properties": { "tolerance": 0.01 } },
+    { "name": "PlaceObject", "category": "action", "title": "Place Object", "description": "Releases the object at the target pose.", "properties": {} }
+  ],
+  "nodes": {
+    "n1": { "id": "n1", "name": "Sequence", "title": "Pick And Place", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n2", "n7", "n8"] },
+    "n2": { "id": "n2", "name": "Priority", "title": "Ensure Holding Object", "description": "Skip acquisition if the object is already held.", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n3", "n4"] },
+    "n3": { "id": "n3", "name": "IsHoldingObject", "title": "Is Holding Object?", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n4": { "id": "n4", "name": "Sequence", "title": "Acquire Object", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n5", "n6"] },
+    "n5": { "id": "n5", "name": "MoveToObject", "title": "Move To Object", "description": "", "properties": { "tolerance": 0.01 }, "display": { "x": 0, "y": 0 } },
+    "n6": { "id": "n6", "name": "RepeatUntilSuccess", "title": "Retry Grasp", "description": "", "properties": { "maxLoop": 3 }, "display": { "x": 0, "y": 0 }, "child": "n6a" },
+    "n6a": { "id": "n6a", "name": "GraspObject", "title": "Grasp Object", "description": "", "properties": { "force": 20 }, "display": { "x": 0, "y": 0 } },
+    "n7": { "id": "n7", "name": "MoveToTarget", "title": "Move To Target", "description": "", "properties": { "tolerance": 0.01 }, "display": { "x": 0, "y": 0 } },
+    "n8": { "id": "n8", "name": "PlaceObject", "title": "Place Object", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } }
+  }
+}

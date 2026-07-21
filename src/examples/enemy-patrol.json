@@ -1,0 +1,28 @@
+{
+  "id": "enemy-patrol",
+  "title": "Enemy Patrol AI",
+  "description": "A classic enemy NPC: attack the player when in range, chase when visible, otherwise patrol between waypoints.",
+  "root": "n1",
+  "properties": {},
+  "custom_nodes": [
+    { "name": "IsPlayerInRange", "category": "condition", "title": "Is Player In Range?", "description": "Succeeds if the player is within attack range.", "properties": { "range": 2 } },
+    { "name": "AttackPlayer", "category": "action", "title": "Attack Player", "description": "Performs an attack against the player.", "properties": {} },
+    { "name": "IsPlayerVisible", "category": "condition", "title": "Is Player Visible?", "description": "Succeeds if the player is within sight distance and line of sight.", "properties": { "distance": 10 } },
+    { "name": "MoveToPlayer", "category": "action", "title": "Move To Player", "description": "Moves the agent toward the player's position.", "properties": { "speed": 4 } },
+    { "name": "MoveToWaypoint", "category": "action", "title": "Move To Waypoint", "description": "Moves the agent toward the current patrol waypoint.", "properties": { "speed": 2 } },
+    { "name": "NextWaypoint", "category": "action", "title": "Next Waypoint", "description": "Advances the patrol route to the next waypoint.", "properties": {} }
+  ],
+  "nodes": {
+    "n1": { "id": "n1", "name": "Priority", "title": "Enemy AI", "description": "Tries each behavior in order until one succeeds.", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n2", "n5", "n8"] },
+    "n2": { "id": "n2", "name": "Sequence", "title": "Attack", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n3", "n4"] },
+    "n3": { "id": "n3", "name": "IsPlayerInRange", "title": "Is Player In Range?", "description": "", "properties": { "range": 2 }, "display": { "x": 0, "y": 0 } },
+    "n4": { "id": "n4", "name": "AttackPlayer", "title": "Attack Player", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n5": { "id": "n5", "name": "Sequence", "title": "Chase", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n6", "n7"] },
+    "n6": { "id": "n6", "name": "IsPlayerVisible", "title": "Is Player Visible?", "description": "", "properties": { "distance": 10 }, "display": { "x": 0, "y": 0 } },
+    "n7": { "id": "n7", "name": "MoveToPlayer", "title": "Move To Player", "description": "", "properties": { "speed": 4 }, "display": { "x": 0, "y": 0 } },
+    "n8": { "id": "n8", "name": "Sequence", "title": "Patrol", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n9", "n10", "n11"] },
+    "n9": { "id": "n9", "name": "MoveToWaypoint", "title": "Move To Waypoint", "description": "", "properties": { "speed": 2 }, "display": { "x": 0, "y": 0 } },
+    "n10": { "id": "n10", "name": "Wait", "title": "Wait", "description": "", "properties": { "milliseconds": 2000 }, "display": { "x": 0, "y": 0 } },
+    "n11": { "id": "n11", "name": "NextWaypoint", "title": "Next Waypoint", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } }
+  }
+}

@@ -87,7 +87,7 @@ b3e.editor.ImportManager = function(editor) {
     }
 
     if (!data.display) {
-      tree.organize.organize(true);
+      tree.organize.organize(null, true);
     }
 
     tree.selection.deselectAll();

@@ -15,13 +15,15 @@ angular.module('app', [
   }
 ])
 
-.run(['$window', '$animate', '$location', '$document', '$timeout', 'settingsModel', 'projectModel',
+.run(['$window', '$animate', '$http', '$state', '$location', '$document', '$timeout', 'settingsModel', 'projectModel',
   function Execute($window,
                    $animate,
+                   $http,
+                   $state,
                    $location,
                    $document,
                    $timeout,
-                   settingsModel, 
+                   settingsModel,
                    projectModel) {
 
     // reset path
@@ -48,14 +50,42 @@ angular.module('app', [
           }, 500);
         }
 
+        function loadExample() {
+          var match = /[?&]example=([\w-]+)/.exec($window.location.search);
+          if (!match) return;
+
+          $http
+            .get('examples/' + match[1] + '.json')
+            .then(function(response) {
+              var path = 'b3projects-examples';
+              return projectModel
+                .openProject(path)
+                .then(null, function() {
+                  return projectModel.newProject(path, 'Examples');
+                })
+                .then(function() {
+                  var data = response.data;
+                  if (data.trees) {
+                    $window.editor.import.projectAsData(data);
+                  } else {
+                    $window.editor.import.treeAsData(data);
+                  }
+                  $window.editor.clearDirty();
+                  $state.go('editor');
+                });
+            });
+        }
+
         if (projects.length > 0 && projects[0].isOpen) {
           projectModel
             .openProject(projects[0].path)
             .then(function() {
               closePreload();
+              loadExample();
             });
         } else {
           closePreload();
+          loadExample();
         }
       });
   }

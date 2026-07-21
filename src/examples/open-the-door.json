@@ -1,0 +1,29 @@
+{
+  "id": "open-the-door",
+  "title": "Open The Door (Selector vs Sequence)",
+  "description": "The classic teaching example: a selector tries strategies in priority order, and each strategy is a sequence of steps that must all succeed.",
+  "root": "n1",
+  "properties": {},
+  "custom_nodes": [
+    { "name": "IsDoorOpen", "category": "condition", "title": "Is Door Open?", "description": "Succeeds if the door is already open.", "properties": {} },
+    { "name": "WalkThrough", "category": "action", "title": "Walk Through Door", "description": "Walks the agent through the doorway.", "properties": {} },
+    { "name": "HasKey", "category": "condition", "title": "Has Key?", "description": "Succeeds if the agent carries the door key.", "properties": {} },
+    { "name": "UnlockDoor", "category": "action", "title": "Unlock Door", "description": "Unlocks the door with the key.", "properties": {} },
+    { "name": "OpenDoor", "category": "action", "title": "Open Door", "description": "Opens the unlocked door.", "properties": {} },
+    { "name": "SmashDoor", "category": "action", "title": "Smash Door", "description": "Breaks the door down as a last resort.", "properties": { "strengthRequired": 8 } }
+  ],
+  "nodes": {
+    "n1": { "id": "n1", "name": "Priority", "title": "Enter The Room", "description": "Tries the cheapest strategy first, falling back to more drastic ones.", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n2", "n5", "n10"] },
+    "n2": { "id": "n2", "name": "Sequence", "title": "Just Walk In", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n3", "n4"] },
+    "n3": { "id": "n3", "name": "IsDoorOpen", "title": "Is Door Open?", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n4": { "id": "n4", "name": "WalkThrough", "title": "Walk Through Door", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n5": { "id": "n5", "name": "Sequence", "title": "Use The Key", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n6", "n7", "n8", "n9"] },
+    "n6": { "id": "n6", "name": "HasKey", "title": "Has Key?", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n7": { "id": "n7", "name": "UnlockDoor", "title": "Unlock Door", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n8": { "id": "n8", "name": "OpenDoor", "title": "Open Door", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n9": { "id": "n9", "name": "WalkThrough", "title": "Walk Through Door", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } },
+    "n10": { "id": "n10", "name": "Sequence", "title": "Brute Force", "description": "", "properties": {}, "display": { "x": 0, "y": 0 }, "children": ["n11", "n12"] },
+    "n11": { "id": "n11", "name": "SmashDoor", "title": "Smash Door", "description": "", "properties": { "strengthRequired": 8 }, "display": { "x": 0, "y": 0 } },
+    "n12": { "id": "n12", "name": "WalkThrough", "title": "Walk Through Door", "description": "", "properties": {}, "display": { "x": 0, "y": 0 } }
+  }
+}

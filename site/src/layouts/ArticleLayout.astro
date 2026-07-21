@@ -1,0 +1,306 @@
+---
+const { frontmatter } = Astro.props;
+const title = frontmatter?.title ?? Astro.props.title;
+const description = frontmatter?.description ?? Astro.props.description;
+const pubDate = frontmatter?.pubDate;
+const updatedDate = frontmatter?.updatedDate;
+const isArticle = !!frontmatter;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+const jsonLd = isArticle
+    ? {
+          '@context': 'https://schema.org',
+          '@type': 'TechArticle',
+          headline: title,
+          description: description,
+          url: canonical,
+          ...(pubDate ? { datePublished: pubDate } : {}),
+          ...(updatedDate ? { dateModified: updatedDate } : {}),
+          author: { '@type': 'Organization', name: 'behaviortrees.com', url: 'https://www.behaviortrees.com/' },
+          publisher: { '@type': 'Organization', name: 'behaviortrees.com', url: 'https://www.behaviortrees.com/' },
+      }
+    : null;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="shortcut icon" type="image/x-icon" href="/imgs/favicon.ico" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta property="og:type" content={isArticle ? 'article' : 'website'} />
+    <meta property="og:site_name" content="behaviortrees.com" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content="https://www.behaviortrees.com/imgs/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="https://www.behaviortrees.com/imgs/og-image.png" />
+
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+
+    <script defer data-domain="behaviortrees.com" src="https://plausible.io/js/script.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <nav>
+            <a class="wordmark" href="/learn/">behavior<span>trees</span>.com</a>
+            <div class="nav-links">
+                <a href="/learn/">Learn</a>
+                <a class="cta" href="/">Open Editor</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article>
+            <slot />
+        </article>
+
+        <!-- Ad slot: activate after EthicalAds/Carbon approval.
+             https://www.ethicalads.io/publishers/
+        <div class="ad-slot" data-ea-publisher="behaviortreescom" data-ea-type="text"></div>
+        -->
+
+        <section class="newsletter">
+            <h2>Get behavior tree patterns in your inbox</h2>
+            <p>
+                Occasional deep dives on game AI and robotics behavior trees, plus early access
+                to new editor features. No spam, unsubscribe anytime.
+            </p>
+            <form
+                action="https://buttondown.com/api/emails/embed-subscribe/behaviortrees"
+                method="post"
+                target="_blank"
+            >
+                <input type="email" name="email" placeholder="you@example.com" required />
+                <button type="submit">Subscribe</button>
+            </form>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>
+            <a href="/learn/">Guides</a> ·
+            <a href="/">Behavior Tree Editor</a> ·
+            <a href="https://github.com/alanhoskins/behaviortrees">GitHub</a>
+        </p>
+        <p>© {new Date().getFullYear()} behaviortrees.com. Editor based on the MIT-licensed behavior3editor.</p>
+    </footer>
+</body>
+</html>
+
+<style is:global>
+    :root {
+        --bg: #ffffff;
+        --bg-soft: #f5f6f8;
+        --text: #1c2128;
+        --text-soft: #57606a;
+        --accent: #2f81f7;
+        --accent-ink: #ffffff;
+        --border: #d8dee4;
+        --code-bg: #f0f2f5;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #16191d;
+            --bg-soft: #1e2228;
+            --text: #e6e9ec;
+            --text-soft: #9aa4af;
+            --accent: #4c94ff;
+            --accent-ink: #0b1524;
+            --border: #2c333b;
+            --code-bg: #1e2228;
+        }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.65;
+        font-size: 1.0625rem;
+    }
+
+    .site-header {
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+    }
+    .site-header nav {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 0.9rem 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .wordmark {
+        font-weight: 700;
+        font-size: 1.05rem;
+        text-decoration: none;
+        color: var(--text);
+        letter-spacing: -0.01em;
+    }
+    .wordmark span { color: var(--accent); }
+    .nav-links { display: flex; gap: 1rem; align-items: center; }
+    .nav-links a {
+        color: var(--text-soft);
+        text-decoration: none;
+        font-size: 0.95rem;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a.cta {
+        background: var(--accent);
+        color: var(--accent-ink);
+        padding: 0.4rem 0.85rem;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    main {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+    }
+
+    article h1 {
+        font-size: 2.1rem;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+        margin: 0 0 1rem;
+    }
+    article h2 {
+        font-size: 1.45rem;
+        letter-spacing: -0.01em;
+        margin: 2.25rem 0 0.75rem;
+    }
+    article h3 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; }
+    article p, article li { color: var(--text); }
+    article a { color: var(--accent); }
+    article img { max-width: 100%; }
+
+    article code {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.1em 0.35em;
+        font-size: 0.875em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    article pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+        line-height: 1.5;
+    }
+    article pre code { background: none; border: none; padding: 0; font-size: 0.85rem; }
+
+    article blockquote {
+        margin: 1.5rem 0;
+        padding: 0.25rem 1.25rem;
+        border-left: 3px solid var(--accent);
+        background: var(--bg-soft);
+        border-radius: 0 8px 8px 0;
+        color: var(--text-soft);
+    }
+
+    article table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1.5rem 0;
+        font-size: 0.95rem;
+    }
+    article th, article td {
+        border: 1px solid var(--border);
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        vertical-align: top;
+    }
+    article th { background: var(--bg-soft); }
+
+    .try-editor {
+        display: inline-block;
+        background: var(--accent);
+        color: var(--accent-ink) !important;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 0.55rem 1.1rem;
+        border-radius: 8px;
+        margin: 0.5rem 0 1rem;
+    }
+    .try-editor:hover { filter: brightness(1.08); }
+
+    .disclosure {
+        font-size: 0.85rem;
+        color: var(--text-soft);
+        background: var(--bg-soft);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        margin: 1.5rem 0;
+    }
+
+    .ad-slot { margin: 2.5rem 0; }
+
+    .newsletter {
+        margin-top: 3.5rem;
+        border: 1px solid var(--border);
+        background: var(--bg-soft);
+        border-radius: 12px;
+        padding: 1.5rem 1.75rem;
+    }
+    .newsletter h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    .newsletter p { margin: 0 0 1rem; color: var(--text-soft); font-size: 0.95rem; }
+    .newsletter form { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .newsletter input[type='email'] {
+        flex: 1 1 14rem;
+        padding: 0.55rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 0.95rem;
+    }
+    .newsletter button {
+        background: var(--accent);
+        color: var(--accent-ink);
+        border: none;
+        border-radius: 8px;
+        padding: 0.55rem 1.2rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+    }
+
+    .site-footer {
+        border-top: 1px solid var(--border);
+        padding: 1.5rem 1.25rem 2.5rem;
+        text-align: center;
+        color: var(--text-soft);
+        font-size: 0.875rem;
+    }
+    .site-footer a { color: var(--text-soft); }
+
+    .article-list { list-style: none; padding: 0; margin: 2rem 0; }
+    .article-list li {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.1rem 1.4rem;
+        margin-bottom: 0.9rem;
+        background: var(--bg-soft);
+    }
+    .article-list a { font-weight: 600; text-decoration: none; font-size: 1.1rem; }
+    .article-list p { margin: 0.35rem 0 0; color: var(--text-soft); font-size: 0.95rem; }
+</style>
