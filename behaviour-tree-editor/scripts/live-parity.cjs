@@ -16,8 +16,10 @@ const exe = process.env.CHROMIUM_PATH || path.join(
   os.homedir(),
   'Library/Caches/ms-playwright/chromium-1193/chrome-mac/Chromium.app/Contents/MacOS/Chromium'
 );
-const OLD = 'https://www.behaviortrees.com';
-const NEW = 'https://new.behaviortrees.com';
+// Default to production; override to run against local builds before deploying:
+//   OLD_EDITOR_URL=http://127.0.0.1:8123 NEW_EDITOR_URL=http://127.0.0.1:5173
+const OLD = process.env.OLD_EDITOR_URL || 'https://www.behaviortrees.com';
+const NEW = process.env.NEW_EDITOR_URL || 'https://new.behaviortrees.com';
 
 function semantics(tree) {
   return {
@@ -150,8 +152,72 @@ function diff(a, b, label) {
     ok = diff(semantics(newExport), semantics(reExported), 'new-to-old') && ok;
   }
 
+  // ---- Step 4: boot parity — the same ?example= deep link on both editors ----
+  // app.js:53-77 wires ?example= to open/create an "Examples" project and land
+  // in the editor. Steps 1-3 compared file round-trips; this compares what each
+  // editor produces from an identical cold boot, which is the app.js contract.
+  const bootPage = await browser.newPage();
+  const bootErrors = [];
+  bootPage.on('pageerror', (e) => bootErrors.push(e.message));
+  await bootPage.goto(`${NEW}/?example=enemy-patrol`);
+
+  const booted = await bootPage
+    .waitForFunction(
+      () => {
+        if (!location.pathname.startsWith('/editor')) return false;
+        const raw = localStorage.getItem('bt-project-examples');
+        if (!raw) return false;
+        const p = JSON.parse(raw);
+        return p.trees && p.trees.length > 0 ? p : false;
+      },
+      undefined,
+      { timeout: 20000 }
+    )
+    .then((handle) => handle.jsonValue())
+    .catch(() => null);
+
+  if (!booted) {
+    console.log('❌ Step 4: new editor did not complete the ?example= boot');
+    ok = false;
+  } else {
+    const bootTree = booted.trees.find((t) => t.id === liveOldExport.id) || booted.trees[0];
+    console.log(
+      `Step 4: new editor booted from ?example= into "${booted.name}" (${booted.trees.length} tree(s))`
+    );
+    ok = diff(semantics(liveOldExport), semantics(bootTree), 'boot-deep-link') && ok;
+  }
+
+  // ---- Step 5: palette drag-and-drop (app.js:33-35 canvas drop wiring) ----
+  // The classic editor tags the canvas b3-drop-node so palette entries can be
+  // dropped onto it. This is the one boot obligation jsdom cannot cover, since
+  // ReactFlow needs real layout measurement to place the dropped block.
+  if (booted) {
+    const before = await bootPage.evaluate(() => document.querySelectorAll('.react-flow__node').length);
+    // Whatever the palette shows on its default tab — the point is the drop
+    // wiring, not any particular node type
+    const source = bootPage.locator('[data-palette-node]:visible').first();
+    const canvas = bootPage.locator('.react-flow__pane').first();
+
+    try {
+      await source.waitFor({ timeout: 5000 });
+      await source.dragTo(canvas);
+      await bootPage.waitForFunction(
+        (n) => document.querySelectorAll('.react-flow__node').length > n,
+        before,
+        { timeout: 5000 }
+      );
+      const after = await bootPage.evaluate(() => document.querySelectorAll('.react-flow__node').length);
+      console.log(`✅ palette drag-and-drop adds a block to the canvas (${before} → ${after})`);
+    } catch {
+      console.log(`❌ palette drag-and-drop did not add a block (still ${before} nodes)`);
+      ok = false;
+    }
+  }
+
   console.log('old editor page errors:', JSON.stringify(oldErrors));
   console.log('new editor page errors:', JSON.stringify(newErrors));
+  console.log('boot page errors:', JSON.stringify(bootErrors));
+  if (bootErrors.length) ok = false;
   if (oldErrors.length || newErrors.length) ok = false;
 
   console.log(ok ? '\nRESULT: ✅ LIVE PARITY CONFIRMED' : '\nRESULT: ❌ PARITY FAILURES — see diffs');

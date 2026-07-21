@@ -29,6 +29,24 @@ const jsonLd = isArticle
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="shortcut icon" type="image/x-icon" href="/imgs/favicon.ico" />
 
+    <!-- Must run before any stylesheet so the first style resolution already
+         sees the theme. Kept byte-identical with the editor app's index.html;
+         both sites share one origin, so they share the bt-theme key. -->
+    <script is:inline>
+        (function () {
+            try {
+                var t = localStorage.getItem('bt-theme') || 'system',
+                    d = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches),
+                    r = document.documentElement;
+                r.dataset.theme = d ? 'dark' : 'light';
+                r.style.colorScheme = d ? 'dark' : 'light';
+            } catch (e) {
+                document.documentElement.dataset.theme = 'dark';
+            }
+        })();
+    </script>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin.woff2" crossorigin />
+
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -51,13 +69,52 @@ const jsonLd = isArticle
 <body>
     <header class="site-header">
         <nav>
-            <a class="wordmark" href="/learn/">behavior<span>trees</span>.com</a>
+            <a class="wordmark" href="/learn/">behaviortrees<span>.com</span></a>
             <div class="nav-links">
                 <a href="/learn/">Learn</a>
                 <a class="cta" href="/">Open Editor</a>
+                <button
+                    type="button"
+                    id="theme-toggle"
+                    class="theme-pill"
+                    role="switch"
+                    aria-checked="false"
+                    aria-label="Toggle theme"
+                    title="Toggle theme"
+                >
+                    <span class="knob"></span>
+                </button>
             </div>
         </nav>
     </header>
+
+    <script is:inline>
+        (function () {
+            var btn = document.getElementById('theme-toggle');
+            if (!btn) return;
+            var sync = function () {
+                var light = document.documentElement.dataset.theme === 'light';
+                btn.setAttribute('aria-checked', String(light));
+            };
+            sync();
+            btn.addEventListener('click', function () {
+                var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('bt-theme', next);
+                document.documentElement.dataset.theme = next;
+                document.documentElement.style.colorScheme = next;
+                sync();
+            });
+            // Follow the editor app changing the theme in another tab
+            window.addEventListener('storage', function (e) {
+                if (e.key && e.key !== 'bt-theme') return;
+                var t = localStorage.getItem('bt-theme') || 'system';
+                var d = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.dataset.theme = d ? 'dark' : 'light';
+                document.documentElement.style.colorScheme = d ? 'dark' : 'light';
+                sync();
+            });
+        })();
+    </script>
 
     <main>
         <article>
@@ -98,210 +155,419 @@ const jsonLd = isArticle
 </body>
 </html>
 
+
 <style is:global>
-    :root {
-        --bg: #ffffff;
-        --bg-soft: #f5f6f8;
-        --text: #1c2128;
-        --text-soft: #57606a;
-        --accent: #2f81f7;
-        --accent-ink: #ffffff;
-        --border: #d8dee4;
-        --code-bg: #f0f2f5;
+    /* ──────────────────────────────────────────────────────────────────────
+       Nocturne — the same Layer B token block the editor app carries in
+       src/index.css. Kept as plain CSS on purpose so it ports between the
+       Tailwind app and this Astro site without translation.
+       ────────────────────────────────────────────────────────────────────── */
+    @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url('/fonts/inter-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+            U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+            U+2215, U+FEFF, U+FFFD;
     }
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --bg: #16191d;
-            --bg-soft: #1e2228;
-            --text: #e6e9ec;
-            --text-soft: #9aa4af;
-            --accent: #4c94ff;
-            --accent-ink: #0b1524;
-            --border: #2c333b;
-            --code-bg: #1e2228;
-        }
+    @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+            U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+            U+2113, U+2C60-2C7F, U+A720-A7FF;
     }
 
-    * { box-sizing: border-box; }
+    :root,
+    [data-theme='dark'] {
+        color-scheme: dark;
+        --bt-bg: #161826;
+        --bt-text: #e9e9ed;
+        --bt-accent: #9184d9;
+        --bt-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+        --mut: #9397ab;
+        --faint: #75798c;
+        --brd: #3f424d;
+        --panel: #232532;
+        --inputbg: #1c1e2b;
+        --acc-soft: #d2cefd;
+        --acc-deep: #b5abfc;
+        --glow: rgba(145, 132, 217, 0.32);
+    }
+
+    [data-theme='light'] {
+        color-scheme: light;
+        --bt-bg: #e4e7f5;
+        --bt-text: #292b31;
+        --bt-divider: color-mix(in srgb, #292b31 16%, transparent);
+        --mut: #595d6c;
+        --faint: #75798c;
+        --brd: #b2b6ca;
+        --panel: #f3f5fe;
+        --inputbg: #e4e7f5;
+        --acc-soft: #5d5294;
+        --acc-deep: #5d5294;
+        --glow: rgba(145, 132, 217, 0.45);
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
 
     body {
         margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bt-bg);
+        color: var(--bt-text);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
         line-height: 1.65;
-        font-size: 1.0625rem;
+        font-size: 15px;
     }
 
+    :focus {
+        outline: none;
+    }
+    :focus-visible {
+        outline: 2px solid var(--bt-accent);
+        outline-offset: 2px;
+    }
+    ::selection {
+        background: color-mix(in srgb, var(--bt-accent) 30%, transparent);
+    }
+
+    /* — header — */
     .site-header {
-        border-bottom: 1px solid var(--border);
-        background: var(--bg);
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--bt-bg);
+        border-bottom: 1px solid var(--bt-divider);
     }
     .site-header nav {
-        max-width: 46rem;
-        margin: 0 auto;
-        padding: 0.9rem 1.25rem;
+        height: 54px;
+        padding: 0 2rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
     .wordmark {
-        font-weight: 700;
-        font-size: 1.05rem;
+        font-weight: 500;
+        font-size: 15px;
         text-decoration: none;
-        color: var(--text);
+        color: var(--bt-text);
         letter-spacing: -0.01em;
     }
-    .wordmark span { color: var(--accent); }
-    .nav-links { display: flex; gap: 1rem; align-items: center; }
+    .wordmark span {
+        color: var(--acc-deep);
+    }
+    .nav-links {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+    }
     .nav-links a {
-        color: var(--text-soft);
+        color: var(--mut);
         text-decoration: none;
-        font-size: 0.95rem;
+        font-size: 13px;
+        transition: color 0.15s;
     }
-    .nav-links a:hover { color: var(--text); }
+    .nav-links a:hover {
+        color: var(--acc-soft);
+    }
+    /* Outlined, never a solid accent fill — the system's core button rule. */
     .nav-links a.cta {
-        background: var(--accent);
-        color: var(--accent-ink);
-        padding: 0.4rem 0.85rem;
-        border-radius: 6px;
-        font-weight: 600;
+        border: 1px solid var(--bt-accent);
+        border-radius: 8px;
+        color: var(--acc-soft);
+        font-weight: 500;
+        padding: 7px 16px;
+        transition: background 0.15s;
+    }
+    .nav-links a.cta:hover {
+        background: color-mix(in srgb, var(--bt-accent) 14%, transparent);
     }
 
+    .theme-pill {
+        position: relative;
+        display: inline-block;
+        width: 34px;
+        height: 19px;
+        padding: 0;
+        border: 1px solid var(--brd);
+        border-radius: 10px;
+        background: transparent;
+        cursor: pointer;
+        transition: border-color 0.15s;
+    }
+    .theme-pill:hover {
+        border-color: var(--bt-accent);
+    }
+    .theme-pill .knob {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--bt-accent);
+        transition: transform 0.18s;
+    }
+    .theme-pill[aria-checked='true'] .knob {
+        transform: translateX(15px);
+    }
+
+    /* — layout — */
+    /* Flush-left and asymmetric: the column hugs the left edge on wide
+       viewports and the whitespace falls on the right. */
     main {
-        max-width: 46rem;
-        margin: 0 auto;
-        padding: 2.5rem 1.25rem 4rem;
+        max-width: 42rem;
+        margin: 0 auto 0 max(1.25rem, calc(50vw - 30rem));
+        padding: 4rem 1.25rem 5rem;
     }
 
+    /* — article type — */
     article h1 {
-        font-size: 2.1rem;
-        line-height: 1.2;
+        font-size: 40px;
+        font-weight: 500;
+        line-height: 1.1;
         letter-spacing: -0.02em;
-        margin: 0 0 1rem;
+        margin: 0 0 0.9rem;
+        text-wrap: balance;
     }
     article h2 {
-        font-size: 1.45rem;
-        letter-spacing: -0.01em;
-        margin: 2.25rem 0 0.75rem;
+        font-size: 25px;
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        margin: 2.75rem 0 0.75rem;
     }
-    article h3 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; }
-    article p, article li { color: var(--text); }
-    article a { color: var(--accent); }
-    article img { max-width: 100%; }
+    article h3 {
+        font-size: 20px;
+        font-weight: 500;
+        margin: 2rem 0 0.5rem;
+    }
+    article p,
+    article li {
+        color: var(--bt-text);
+        text-wrap: pretty;
+    }
+    article > p:first-of-type {
+        font-size: 17px;
+        color: var(--mut);
+    }
+    /* Accent-on-ground is only ~3:1, so paragraph-size accent text takes the
+       lighter ramp step rather than the accent itself. */
+    article a {
+        color: var(--acc-soft);
+        text-decoration: none;
+        text-underline-offset: 3px;
+    }
+    article a:hover {
+        text-decoration: underline;
+    }
+    article img {
+        max-width: 100%;
+    }
 
     article code {
-        background: var(--code-bg);
-        border: 1px solid var(--border);
+        background: var(--inputbg);
+        border: 1px solid var(--brd);
         border-radius: 4px;
         padding: 0.1em 0.35em;
         font-size: 0.875em;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     article pre {
-        background: var(--code-bg);
-        border: 1px solid var(--border);
+        background: var(--inputbg);
+        border: 1px solid var(--brd);
         border-radius: 8px;
         padding: 1rem 1.25rem;
         overflow-x: auto;
         line-height: 1.5;
     }
-    article pre code { background: none; border: none; padding: 0; font-size: 0.85rem; }
+    article pre code {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 0.85rem;
+    }
 
     article blockquote {
         margin: 1.5rem 0;
         padding: 0.25rem 1.25rem;
-        border-left: 3px solid var(--accent);
-        background: var(--bg-soft);
-        border-radius: 0 8px 8px 0;
-        color: var(--text-soft);
+        border-left: 2px solid var(--bt-accent);
+        color: var(--mut);
     }
 
     article table {
         border-collapse: collapse;
         width: 100%;
         margin: 1.5rem 0;
-        font-size: 0.95rem;
+        font-size: 14px;
+        display: block;
+        overflow-x: auto;
     }
-    article th, article td {
-        border: 1px solid var(--border);
+    article th,
+    article td {
+        border-bottom: 1px solid var(--bt-divider);
         padding: 0.5rem 0.75rem;
         text-align: left;
         vertical-align: top;
     }
-    article th { background: var(--bg-soft); }
+    article th {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 500;
+        color: var(--mut);
+    }
 
     .try-editor {
         display: inline-block;
-        background: var(--accent);
-        color: var(--accent-ink) !important;
-        text-decoration: none;
-        font-weight: 600;
-        padding: 0.55rem 1.1rem;
+        border: 1px solid var(--bt-accent);
         border-radius: 8px;
+        color: var(--acc-soft) !important;
+        text-decoration: none !important;
+        font-weight: 500;
+        font-size: 13px;
+        padding: 8px 18px;
         margin: 0.5rem 0 1rem;
+        transition: background 0.15s;
     }
-    .try-editor:hover { filter: brightness(1.08); }
+    .try-editor:hover {
+        background: color-mix(in srgb, var(--bt-accent) 14%, transparent);
+    }
 
     .disclosure {
-        font-size: 0.85rem;
-        color: var(--text-soft);
-        background: var(--bg-soft);
-        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--mut);
+        background: var(--panel);
+        border: 1px solid var(--brd);
         border-radius: 8px;
         padding: 0.6rem 1rem;
         margin: 1.5rem 0;
     }
 
-    .ad-slot { margin: 2.5rem 0; }
+    .ad-slot {
+        margin: 2.5rem 0;
+    }
 
+    /* — newsletter — */
     .newsletter {
         margin-top: 3.5rem;
-        border: 1px solid var(--border);
-        background: var(--bg-soft);
-        border-radius: 12px;
-        padding: 1.5rem 1.75rem;
+        border: 1px solid var(--brd);
+        background: var(--panel);
+        border-radius: 14px;
+        padding: 1.75rem 2rem;
     }
-    .newsletter h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
-    .newsletter p { margin: 0 0 1rem; color: var(--text-soft); font-size: 0.95rem; }
-    .newsletter form { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .newsletter h2 {
+        margin: 0 0 0.4rem;
+        font-size: 17px;
+        font-weight: 500;
+    }
+    .newsletter p {
+        margin: 0 0 1rem;
+        color: var(--mut);
+        font-size: 13.5px;
+        max-width: 34rem;
+    }
+    .newsletter form {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
     .newsletter input[type='email'] {
         flex: 1 1 14rem;
-        padding: 0.55rem 0.8rem;
-        border: 1px solid var(--border);
+        min-height: 36px;
+        padding: 6px 10px;
+        border: 1px solid var(--brd);
         border-radius: 8px;
-        background: var(--bg);
-        color: var(--text);
-        font-size: 0.95rem;
+        background: var(--inputbg);
+        color: var(--bt-text);
+        caret-color: var(--bt-accent);
+        font: inherit;
+        font-size: 14px;
+    }
+    .newsletter input[type='email']:hover {
+        border-color: var(--mut);
+    }
+    .newsletter input[type='email']:focus-visible {
+        border-color: var(--bt-accent);
+        outline-offset: 0;
+    }
+    .newsletter input::placeholder {
+        color: var(--faint);
     }
     .newsletter button {
-        background: var(--accent);
-        color: var(--accent-ink);
-        border: none;
+        background: transparent;
+        border: 1px solid var(--bt-accent);
         border-radius: 8px;
-        padding: 0.55rem 1.2rem;
-        font-weight: 600;
-        font-size: 0.95rem;
+        color: var(--acc-soft);
+        padding: 6px 18px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
         cursor: pointer;
+        transition: background 0.15s;
+    }
+    .newsletter button:hover {
+        background: color-mix(in srgb, var(--bt-accent) 14%, transparent);
     }
 
+    /* — footer — */
     .site-footer {
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--bt-divider);
         padding: 1.5rem 1.25rem 2.5rem;
         text-align: center;
-        color: var(--text-soft);
-        font-size: 0.875rem;
+        color: var(--mut);
+        font-size: 13px;
     }
-    .site-footer a { color: var(--text-soft); }
+    .site-footer a {
+        color: var(--mut);
+        text-decoration: none;
+    }
+    .site-footer a:hover {
+        color: var(--acc-soft);
+    }
 
-    .article-list { list-style: none; padding: 0; margin: 2rem 0; }
-    .article-list li {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 1.1rem 1.4rem;
-        margin-bottom: 0.9rem;
-        background: var(--bg-soft);
+    /* — guide index — */
+    .article-list {
+        list-style: none;
+        padding: 0;
+        margin: 2.5rem 0 0;
     }
-    .article-list a { font-weight: 600; text-decoration: none; font-size: 1.1rem; }
-    .article-list p { margin: 0.35rem 0 0; color: var(--text-soft); font-size: 0.95rem; }
+    /* Rules fade to transparent at their ends — a Nocturne signature. */
+    .article-list li {
+        padding: 22px 0;
+        border-bottom: 1px solid transparent;
+        border-image: linear-gradient(90deg, var(--bt-divider), transparent) 1;
+    }
+    .article-list a {
+        font-weight: 500;
+        font-size: 19px;
+        letter-spacing: -0.01em;
+        text-decoration: none;
+        color: var(--acc-soft);
+    }
+    .article-list a:hover {
+        text-decoration: underline;
+    }
+    .article-list p {
+        margin: 0.4rem 0 0;
+        color: var(--mut);
+        font-size: 13.5px;
+        line-height: 1.55;
+        max-width: 38rem;
+    }
+
+    @media (max-width: 900px) {
+        main {
+            margin: 0 auto;
+        }
+    }
 </style>

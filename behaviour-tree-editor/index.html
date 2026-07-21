@@ -5,6 +5,25 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="shortcut icon" type="image/x-icon" href="/imgs/favicon.ico" />
 
+		<!-- Must run before any stylesheet so the first style resolution already
+		     sees the theme. Inline and blocking on purpose: an external file is a
+		     round trip, and the round trip is the flash. Kept byte-identical in
+		     site/src/layouts/ArticleLayout.astro. -->
+		<script>
+			(function () {
+				try {
+					var t = localStorage.getItem('bt-theme') || 'system',
+						d = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches),
+						r = document.documentElement;
+					r.dataset.theme = d ? 'dark' : 'light';
+					r.style.colorScheme = d ? 'dark' : 'light';
+				} catch (e) {
+					document.documentElement.dataset.theme = 'dark';
+				}
+			})();
+		</script>
+		<link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin.woff2" crossorigin />
+
 		<title>Behavior Tree Editor - Free Online Visual Editor for Game AI</title>
 		<meta
 			name="description"

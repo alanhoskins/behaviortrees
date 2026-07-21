@@ -138,7 +138,7 @@ const ProjectsPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Projects</h1>
+        <h1 className="text-3xl font-medium">Projects</h1>
         <div className="flex space-x-4">
           <Button 
             onClick={() => setIsCreating(true)}
@@ -166,8 +166,8 @@ const ProjectsPage: React.FC = () => {
       </div>
 
       {isCreating && (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold mb-4">Create New Project</h2>
+        <div className="card mb-8">
+          <h2 className="text-xl font-medium mb-4">Create New Project</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Project Name</label>
@@ -175,7 +175,6 @@ const ProjectsPage: React.FC = () => {
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
                 placeholder="My Behavior Tree Project"
               />
             </div>
@@ -184,7 +183,6 @@ const ProjectsPage: React.FC = () => {
               <textarea
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800"
                 placeholder="Description of your project"
                 rows={3}
               />
@@ -204,7 +202,7 @@ const ProjectsPage: React.FC = () => {
       {projects.length > 0 ? (
         <div className="grid gap-6">
           {projects.map((item) => (
-            <div key={item.id} className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
+            <div key={item.id} className="card">
               <div className="flex justify-between items-start">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -218,20 +216,20 @@ const ProjectsPage: React.FC = () => {
                           if (e.key === 'Enter') commitRename(item);
                           else if (e.key === 'Escape') setRenamingId(null);
                         }}
-                        className="text-xl font-semibold px-2 py-0.5 bg-white dark:bg-slate-800 border border-emerald-400 rounded focus:outline-none"
+                        className="text-xl font-medium"
                         autoFocus
                       />
                     ) : (
-                      <h3 className="text-xl font-semibold truncate">{item.name}</h3>
+                      <h3 className="text-xl font-medium truncate">{item.name}</h3>
                     )}
                     {project?.id === item.id && (
-                      <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                      <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border border-accent bg-accent-wash text-accent-soft">
                         Open
                       </span>
                     )}
                   </div>
-                  <p className="text-slate-600 dark:text-slate-300 mt-1">{item.description}</p>
-                  <div className="flex mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-muted mt-1">{item.description}</p>
+                  <div className="flex mt-2 text-sm text-faint">
                     <span className="mr-4">Trees: {Object.keys(item.trees).length}</span>
                     <span>Last updated: {new Date(item.updatedAt).toLocaleDateString()}</span>
                   </div>
@@ -280,6 +278,7 @@ const ProjectsPage: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     title="Delete project"
+                    className="text-danger-soft hover:bg-danger/10"
                     onClick={() => {
                       if (!confirm(`Delete project "${item.name}"?`)) return;
                       localStorage.removeItem(`bt-project-${item.id}`);
@@ -298,9 +297,9 @@ const ProjectsPage: React.FC = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-md text-center">
-          <h2 className="text-xl font-semibold mb-2">No Projects Yet</h2>
-          <p className="text-slate-600 dark:text-slate-300 mb-6">
+        <div className="card text-center">
+          <h2 className="text-xl font-medium mb-2">No Projects Yet</h2>
+          <p className="text-muted mb-6">
             Get started by creating your first behavior tree project.
           </p>
           <Button onClick={() => setIsCreating(true)}>

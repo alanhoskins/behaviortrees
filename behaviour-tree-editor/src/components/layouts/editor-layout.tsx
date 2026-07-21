@@ -1,11 +1,23 @@
 import React, { ReactNode, useState, useEffect, useCallback } from 'react';
-import { Undo2, Redo2, Network } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Network,
+  Redo2,
+  Undo2,
+} from 'lucide-react';
 import { useProjectStore } from '../../stores/useProjectStore';
 import { b3ToTree, parseImportedJson } from '../../lib/behavior/b3';
 import { toast } from 'sonner';
 import ExportModal, { ExportType } from '../modals/export-modal';
-
-type PanelId = 'trees' | 'nodes' | 'properties';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { PanelId, usePanelLayout } from '../../lib/panel-layout';
+import ResizeHandle from './resize-handle';
 
 interface EditorLayoutProps {
   canvas: ReactNode;
@@ -20,7 +32,7 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
   nodesPanel,
   propertiesPanel,
 }) => {
-  const [collapsedPanels, setCollapsedPanels] = useState<PanelId[]>([]);
+  const [layout, updateLayout] = usePanelLayout();
   const [exportOpen, setExportOpen] = useState(false);
   const [exportType, setExportType] = useState<ExportType>('project');
   const project = useProjectStore(state => state.project);
@@ -53,32 +65,15 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
     organize(project.selectedTreeId, layout);
   };
 
+  const isPanelCollapsed = (panelId: PanelId) => layout.collapsed.includes(panelId);
+
   const togglePanel = (panelId: PanelId) => {
-    setCollapsedPanels(prev =>
-      prev.includes(panelId)
-        ? prev.filter(id => id !== panelId)
-        : [...prev, panelId]
-    );
+    updateLayout({
+      collapsed: isPanelCollapsed(panelId)
+        ? layout.collapsed.filter(id => id !== panelId)
+        : [...layout.collapsed, panelId],
+    });
   };
-
-  const isPanelCollapsed = (panelId: PanelId) => collapsedPanels.includes(panelId);
-
-  // Close dropdown menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const menu = document.getElementById('export-menu');
-      const button = document.querySelector('[data-export-trigger]');
-
-      if (menu && button && !menu.contains(event.target as Node) && !button.contains(event.target as Node)) {
-        menu.style.display = 'none';
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   // Save project to localStorage
   const saveProject = useCallback(() => {
@@ -157,24 +152,24 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
 
   if (!project) {
     return (
-      <div className="h-[calc(100vh-12rem)] flex items-center justify-center">
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-lg shadow-lg text-center">
-          <h2 className="text-2xl font-bold mb-4">No Project Open</h2>
-          <p className="mb-6 text-slate-600 dark:text-slate-300">
-            Please open an existing project or create a new one to start using the editor.
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="card max-w-md text-center">
+          <h2 className="mb-3 text-xl font-medium">No project open</h2>
+          <p className="mb-7 text-sm text-muted">
+            Open an existing project or create a new one to start using the editor.
           </p>
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-center gap-3">
             <a
               href="/projects"
-              className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
+              className="rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent-soft transition-colors hover:bg-accent/15"
             >
-              Create New Project
+              Create new project
             </a>
             <a
               href="/projects"
-              className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+              className="rounded-md border border-border px-4 py-2 text-sm transition-colors hover:border-accent hover:text-accent-soft"
             >
-              Open Project
+              Open project
             </a>
           </div>
         </div>
@@ -182,8 +177,34 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
     );
   }
 
+  // All three sections stack vertically now, so every toggle is a chevron up/down.
+  const panelSection = (panelId: PanelId, title: string, body: ReactNode, grow: boolean) => {
+    const collapsed = isPanelCollapsed(panelId);
+    const Icon = collapsed ? ChevronDown : ChevronUp;
+    return (
+      <div
+        className={`flex min-h-0 flex-col ${
+          collapsed ? 'flex-none' : grow ? 'flex-1' : 'max-h-[45%] flex-none'
+        }`}
+      >
+        <div className="panel-head flex-none">
+          <span>{title}</span>
+          <button
+            onClick={() => togglePanel(panelId)}
+            title={collapsed ? `Expand ${title}` : `Collapse ${title}`}
+            aria-expanded={!collapsed}
+            className="rounded-md p-1 text-muted transition-colors hover:bg-fg/5 hover:text-accent-soft"
+          >
+            <Icon size={15} />
+          </button>
+        </div>
+        {!collapsed && <div className="min-h-0 flex-1 overflow-auto">{body}</div>}
+      </div>
+    );
+  };
+
   return (
-    <div className="h-[calc(100vh-12rem)] flex flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Export Modal */}
       <ExportModal
         open={exportOpen}
@@ -192,120 +213,74 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
       />
 
       {/* Editor Toolbar */}
-      <div className="bg-white dark:bg-slate-800 p-3 shadow-sm flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <span className="font-medium">{project.name}</span>
-          <div className="h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
-          <span className="text-slate-500 dark:text-slate-400 text-sm">
+      <div className="flex h-[50px] flex-none items-center justify-between border-b border-divider px-6">
+        <div className="flex items-baseline gap-[10px]">
+          <span className="text-xs text-muted">{project.name}</span>
+          <span className="text-border">/</span>
+          <span className="text-[13px] font-medium">
             {project.selectedTreeId
               ? project.trees[project.selectedTreeId]?.title || 'Unknown Tree'
               : 'No Tree Selected'
             }
           </span>
         </div>
-        <div className="flex space-x-4">
-          <div className="flex space-x-1">
-            <button
-              onClick={handleUndo}
-              disabled={!canUndo}
-              title="Undo (Ctrl+Z)"
-              className="px-2 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Undo2 size={16} />
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!canRedo}
-              title="Redo (Ctrl+Shift+Z)"
-              className="px-2 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Redo2 size={16} />
-            </button>
-            <button
-              onClick={() => handleOrganize(localStorage.getItem('bt-layout') === 'vertical' ? 'vertical' : 'horizontal')}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                handleOrganize(localStorage.getItem('bt-layout') === 'vertical' ? 'horizontal' : 'vertical');
-              }}
-              title="Auto organize (A) — right-click to switch horizontal/vertical"
-              className="px-2 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
-            >
-              <Network size={16} />
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
           <button
-            onClick={saveProject}
-            className="px-3 py-1 text-sm bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo"
+            className="toolbar-btn toolbar-btn--icon"
           >
+            <Undo2 size={14} />
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+            aria-label="Redo"
+            className="toolbar-btn toolbar-btn--icon"
+          >
+            <Redo2 size={14} />
+          </button>
+          <button
+            onClick={() => handleOrganize(localStorage.getItem('bt-layout') === 'vertical' ? 'vertical' : 'horizontal')}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              handleOrganize(localStorage.getItem('bt-layout') === 'vertical' ? 'horizontal' : 'vertical');
+            }}
+            title="Auto organize (A) — right-click to switch horizontal/vertical"
+            aria-label="Auto organize"
+            className="toolbar-btn toolbar-btn--icon"
+          >
+            <Network size={14} />
+          </button>
+
+          <span className="mx-[6px] h-[18px] w-px bg-border" />
+
+          <button onClick={saveProject} className="toolbar-btn toolbar-btn--accent">
             Save
           </button>
-          <button
-            onClick={handleImport}
-            className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition"
-          >
+          <button onClick={handleImport} className="toolbar-btn">
             Import
           </button>
-          <div className="relative inline-flex text-left">
-            <button
-              data-export-trigger
-              onClick={() => handleExport('project')}
-              className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-l hover:bg-slate-300 dark:hover:bg-slate-600 transition"
-            >
+          <DropdownMenu>
+            <DropdownMenuTrigger className="toolbar-btn">
               Export
-            </button>
-            <button
-              data-export-dropdown
-              onClick={() => {
-                const menu = document.getElementById('export-menu');
-                if (menu) {
-                  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-                }
-              }}
-              className="px-1 py-1 text-sm bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-r border-l border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 transition flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <div
-              id="export-menu"
-              className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
-              style={{display: 'none'}}
-            >
-              <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
-                <button
-                  onClick={() => {
-                    handleExport('project');
-                    document.getElementById('export-menu')!.style.display = 'none';
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  role="menuitem"
-                >
-                  Export Project
-                </button>
-                <button
-                  onClick={() => {
-                    handleExport('tree');
-                    document.getElementById('export-menu')!.style.display = 'none';
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  role="menuitem"
-                >
-                  Export Current Tree
-                </button>
-                <button
-                  onClick={() => {
-                    handleExport('nodes');
-                    document.getElementById('export-menu')!.style.display = 'none';
-                  }}
-                  className="block w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  role="menuitem"
-                >
-                  Export Custom Nodes
-                </button>
-              </div>
-            </div>
-          </div>
+              <ChevronDown size={13} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onSelect={() => handleExport('project')}>
+                Export Project
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExport('tree')}>
+                Export Current Tree
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExport('nodes')}>
+                Export Custom Nodes
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <input
             type="file"
             id="bt-file-import"
@@ -317,91 +292,37 @@ const EditorLayout: React.FC<EditorLayoutProps> = ({
       </div>
 
       {/* Main Editor Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <div className={`bg-white dark:bg-slate-800 shadow-md flex flex-col ${isPanelCollapsed('trees') ? 'w-12' : 'w-64'} transition-all`}>
-          <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <h3 className={`font-medium ${isPanelCollapsed('trees') ? 'hidden' : 'block'}`}>
-              Trees
-            </h3>
-            <button
-              onClick={() => togglePanel('trees')}
-              className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-            >
-              {isPanelCollapsed('trees') ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
-          </div>
-          <div className={`flex-1 overflow-auto ${isPanelCollapsed('trees') ? 'hidden' : 'block'}`}>
-            {treesPanel}
-          </div>
+      <div className="flex min-h-0 flex-1">
+        {/* Left rail: Trees over Nodes. Trees is the short list, so Nodes takes
+            the slack; collapsing either hands its space to the other. */}
+        <div
+          className="panel min-h-0 flex-none divide-y divide-divider"
+          style={{ width: layout.left }}
+        >
+          {panelSection('trees', 'Trees', treesPanel, isPanelCollapsed('nodes'))}
+          {panelSection('nodes', 'Nodes', nodesPanel, true)}
         </div>
+
+        <ResizeHandle
+          side="left"
+          width={layout.left}
+          onResize={(left) => updateLayout({ left })}
+          label="Resize trees and nodes panel"
+        />
 
         {/* Canvas/Workspace */}
-        <div className="flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900 relative">
-          {canvas}
-        </div>
+        <div className="relative min-w-0 flex-1 overflow-hidden bg-base">{canvas}</div>
 
-        {/* Right Sidebar */}
-        <div className="bg-white dark:bg-slate-800 shadow-md flex flex-col">
-          {/* Nodes Panel */}
-          <div className={`border-b border-slate-200 dark:border-slate-700 flex flex-col ${isPanelCollapsed('nodes') ? 'h-12' : 'h-1/2'} transition-all`}>
-            <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-medium">
-                Nodes
-              </h3>
-              <button
-                onClick={() => togglePanel('nodes')}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-              >
-                {isPanelCollapsed('nodes') ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            <div className={`flex-1 overflow-auto ${isPanelCollapsed('nodes') ? 'hidden' : 'block'}`}>
-              {nodesPanel}
-            </div>
-          </div>
+        <ResizeHandle
+          side="right"
+          width={layout.right}
+          onResize={(right) => updateLayout({ right })}
+          label="Resize properties panel"
+        />
 
-          {/* Properties Panel */}
-          <div className={`flex flex-col ${isPanelCollapsed('properties') ? 'h-12' : 'flex-1'} transition-all`}>
-            <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="font-medium">
-                Properties
-              </h3>
-              <button
-                onClick={() => togglePanel('properties')}
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-              >
-                {isPanelCollapsed('properties') ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            <div className={`flex-1 overflow-auto ${isPanelCollapsed('properties') ? 'hidden' : 'block'}`}>
-              {propertiesPanel}
-            </div>
-          </div>
+        {/* Right rail: Properties at full height */}
+        <div className="panel min-h-0 flex-none" style={{ width: layout.right }}>
+          {panelSection('properties', 'Properties', propertiesPanel, true)}
         </div>
       </div>
     </div>

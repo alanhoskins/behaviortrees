@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { useProjectStore } from './stores/useProjectStore';
+import { useTheme } from './lib/theme';
 import { Toaster } from 'sonner';
 import AppLayout from './components/layouts/app-layout';
 import ExampleLoader from './components/example-loader';
@@ -19,24 +20,13 @@ function App() {
 		restoreLastProject();
 	}, [restoreLastProject]);
 
-	useEffect(() => {
-		// Initialize theme from localStorage
-		const savedTheme = localStorage.getItem('bt-theme');
-		if (savedTheme === 'dark') {
-			document.documentElement.classList.add('dark');
-		} else if (savedTheme === 'light') {
-			document.documentElement.classList.remove('dark');
-		} else {
-			// Use system preference
-			if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-				document.documentElement.classList.add('dark');
-			}
-		}
-	}, []);
+	// Theme is applied before first paint by the inline script in index.html;
+	// useTheme only keeps it in sync with OS and cross-tab changes.
+	const { resolved } = useTheme();
 
 	return (
 		<BrowserRouter>
-			<Toaster position="bottom-right" />
+			<Toaster position="bottom-right" theme={resolved} />
 			<ExampleLoader />
 			<AppLayout>
 				<Routes>

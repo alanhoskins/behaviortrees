@@ -1,96 +1,95 @@
 import React, { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import ThemeToggle from '../theme-toggle';
 
 type AppLayoutProps = {
-  children: ReactNode;
+	children: ReactNode;
 };
 
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+	isActive ? 'text-accent-soft' : 'text-muted transition-colors hover:text-accent-soft';
+
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-      <header className="bg-white dark:bg-slate-800 shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 24 24"
-              className="h-6 w-6 text-emerald-500"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M4 21V7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-2 2-2-2-3 2z"/>
-              <line x1="12" y1="7" x2="12" y2="13"/>
-              <line x1="9" y1="10" x2="15" y2="10"/>
-            </svg>
-            <h1 className="text-xl font-bold tracking-tight">Behavior Tree Editor</h1>
-          </div>
-          <nav>
-            <ul className="flex space-x-6">
-              <li>
-                <NavLink to="/" className={({ isActive }) => 
-                  isActive 
-                    ? "text-emerald-500 dark:text-emerald-400" 
-                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
-                }>
-                  Home
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/editor" className={({ isActive }) => 
-                  isActive 
-                    ? "text-emerald-500 dark:text-emerald-400" 
-                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
-                }>
-                  Editor
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/projects" className={({ isActive }) => 
-                  isActive 
-                    ? "text-emerald-500 dark:text-emerald-400" 
-                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
-                }>
-                  Projects
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/settings" className={({ isActive }) => 
-                  isActive 
-                    ? "text-emerald-500 dark:text-emerald-400" 
-                    : "text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
-                }>
-                  Settings
-                </NavLink>
-              </li>
-              <li>
-                {/* Static guides site deployed alongside the app */}
-                <a
-                  href="/learn/"
-                  className="text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400"
-                >
-                  Learn
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </header>
-      <main className="container mx-auto px-4 py-6">
-        {children}
-      </main>
-      <footer className="bg-white dark:bg-slate-800 shadow-inner mt-10">
-        <div className="container mx-auto px-4 py-3 text-center text-slate-500 dark:text-slate-400 text-sm">
-          &copy; {new Date().getFullYear()} behaviortrees.com ·{' '}
-          <a href="/learn/" className="text-emerald-500 hover:underline">Learn behavior trees</a> ·{' '}
-          Prefer the classic editor? It lives on at{' '}
-          <a href="https://old.behaviortrees.com" className="text-emerald-500 hover:underline">old.behaviortrees.com</a>.
-        </div>
-      </footer>
-    </div>
-  );
+	// The editor is a full-bleed application screen: no page gutter, no footer,
+	// and it owns the viewport below the header.
+	const isEditor = useLocation().pathname === '/editor';
+
+	return (
+		<div
+			className={
+				isEditor
+					? 'flex h-screen flex-col overflow-hidden bg-base text-fg'
+					: 'flex min-h-screen flex-col bg-base text-fg'
+			}
+		>
+			<header className="flex h-[54px] flex-none items-center justify-between border-b border-divider px-6">
+				<div className="flex items-center gap-3">
+					<div
+						className="grid h-[22px] w-[22px] place-items-center rounded-md border border-accent"
+						style={{ boxShadow: '0 0 10px var(--glow)' }}
+					>
+						<div className="h-2 w-2 rounded-[2px] bg-accent" />
+					</div>
+					<span className="text-[15px] font-medium tracking-[-0.01em]">Behavior Tree Editor</span>
+				</div>
+
+				<nav>
+					<ul className="flex items-center gap-6 text-[13px]">
+						<li>
+							<NavLink to="/" className={navLinkClass}>
+								Home
+							</NavLink>
+						</li>
+						<li>
+							<NavLink to="/editor" className={navLinkClass}>
+								Editor
+							</NavLink>
+						</li>
+						<li>
+							<NavLink to="/projects" className={navLinkClass}>
+								Projects
+							</NavLink>
+						</li>
+						<li>
+							<NavLink to="/settings" className={navLinkClass}>
+								Settings
+							</NavLink>
+						</li>
+						<li>
+							{/* Static guides site deployed alongside the app */}
+							<a href="/learn/" className="text-muted transition-colors hover:text-accent-soft">
+								Learn
+							</a>
+						</li>
+						<li className="flex items-center">
+							<ThemeToggle />
+						</li>
+					</ul>
+				</nav>
+			</header>
+
+			{isEditor ? (
+				<main className="flex min-h-0 flex-1 flex-col">{children}</main>
+			) : (
+				<>
+					<main className="container mx-auto flex-1 px-6 py-10">{children}</main>
+					<footer className="border-t border-divider">
+						<div className="container mx-auto px-6 py-5 text-center text-[13px] text-muted">
+							&copy; {new Date().getFullYear()} behaviortrees.com ·{' '}
+							<a href="/learn/" className="text-accent-soft hover:underline">
+								Learn behavior trees
+							</a>{' '}
+							· Prefer the classic editor? It lives on at{' '}
+							<a href="https://old.behaviortrees.com" className="text-accent-soft hover:underline">
+								old.behaviortrees.com
+							</a>
+							.
+						</div>
+					</footer>
+				</>
+			)}
+		</div>
+	);
 };
 
 export default AppLayout;
