@@ -1,6 +1,6 @@
 {
   "installCommand": "pnpm install && cd ../site && npm install --no-audit --no-fund",
-  "buildCommand": "pnpm build && cp -R ../site/dist/. dist/",
+  "buildCommand": "pnpm build && npm --prefix ../site run build && cp -R ../site/dist/. dist/",
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
