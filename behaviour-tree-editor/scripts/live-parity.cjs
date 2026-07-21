@@ -45,8 +45,8 @@ function diff(a, b, label) {
     return true;
   }
   console.log(`❌ ${label}: MISMATCH`);
-  fs.writeFileSync(path.join(__dirname, `diff-${label.replace(/\W+/g, '-')}-a.json`), sa);
-  fs.writeFileSync(path.join(__dirname, `diff-${label.replace(/\W+/g, '-')}-b.json`), sb);
+  fs.writeFileSync(path.join(require('os').tmpdir(), `diff-${label.replace(/\W+/g, '-')}-a.json`), sa);
+  fs.writeFileSync(path.join(require('os').tmpdir(), `diff-${label.replace(/\W+/g, '-')}-b.json`), sb);
   return false;
 }
 
@@ -80,7 +80,7 @@ function diff(a, b, label) {
   console.log(
     `Step 1: captured live old-editor export ("${liveOldExport.title}", ${Object.keys(liveOldExport.nodes).length} nodes, ${liveOldExport.custom_nodes.length} custom)`
   );
-  const exportFile = path.join(__dirname, 'live-old-export.json');
+  const exportFile = path.join(require('os').tmpdir(), 'live-old-export.json');
   fs.writeFileSync(exportFile, JSON.stringify(liveOldExport, null, 2));
 
   // ---- Step 2: import that file into LIVE new editor through its UI ----
